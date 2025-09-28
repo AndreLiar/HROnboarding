@@ -2,7 +2,7 @@
   "routes": [
     {
       "route": "/api/*",
-      "rewrite": "https://hr-onboarding-api.azurewebsites.net/*"
+      "rewrite": "https://hr-onboarding-dev-r2x0-api.azurewebsites.net/*"
     },
     {
       "route": "/c/*",

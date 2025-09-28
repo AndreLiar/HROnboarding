@@ -112,7 +112,7 @@ app.post('/generate', async (req, res) => {
       try {
         const userPrompt = `Rôle: ${role}, Département: ${department}`;
         const completion = await openai.chat.completions.create({
-          model: 'gpt-4',
+          model: 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userPrompt }
