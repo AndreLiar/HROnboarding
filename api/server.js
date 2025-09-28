@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
 const OpenAI = require('openai');
-const { nanoid } = require('nanoid');
+// Use crypto.randomUUID() instead of nanoid for Node 18+ compatibility
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -157,7 +158,7 @@ app.post('/share', async (req, res) => {
       return res.status(400).json({ error: 'Valid checklist array is required' });
     }
 
-    const slug = nanoid(10);
+    const slug = crypto.randomUUID().substring(0, 10);
     const checklistJson = JSON.stringify(checklist);
 
     const request = new sql.Request();

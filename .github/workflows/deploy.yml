@@ -235,6 +235,11 @@ jobs:
           echo "Check Azure Portal logs for startup issues"
           exit 0
 
+      - name: Azure Login for Frontend Check
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Health check Frontend
         run: |
           # Get the actual Static Web App URL
