@@ -221,17 +221,20 @@ app.get('/health', async (req, res) => {
   res.json(health);
 });
 
-// Start server immediately, initialize database in background
-app.listen(PORT, () => {
+// Start server immediately without database dependency
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 HR Onboarding API running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📊 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`🗄️ Database: ${sqlConfig.server}/${sqlConfig.database}`);
   console.log(`🤖 OpenAI: ${openai ? 'Configured' : 'Not configured'}`);
+  console.log(`✅ Server started successfully`);
   
   // Initialize database in background (non-blocking)
-  initializeDatabase().catch(err => {
-    console.error('Database initialization failed:', err.message);
-  });
+  setTimeout(() => {
+    initializeDatabase().catch(err => {
+      console.error('Database initialization failed:', err.message);
+    });
+  }, 1000);
 });
 
 module.exports = app;
