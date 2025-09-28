@@ -66,7 +66,7 @@ if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'your-openai-ap
 const SYSTEM_PROMPT = `Vous êtes un assistant RH spécialisé dans l'intégration des employés en France.
 Générez une liste de contrôle d'intégration concise en français (forme formelle 'vous').
 Exigences:
-- Format: tableau JSON de chaînes de caractères
+- Format: tableau JSON d'objets avec clé "étape"
 - Longueur: 5-7 éléments
 - Inclure les étapes RH/légales françaises (DPAE, sécurité, médecine du travail, RGPD)
 - Adapter au rôle et au département
@@ -74,7 +74,8 @@ Exigences:
 - RH/Finance → conformité et confidentialité
 - Commercial/Marketing → CRM, RGPD, communication client
 
-Répondez UNIQUEMENT avec le tableau JSON, sans texte supplémentaire.`;
+Répondez UNIQUEMENT avec ce format exact:
+[{"étape": "première tâche"}, {"étape": "deuxième tâche"}, {"étape": "troisième tâche"}]`;
 
 // Database initialization
 async function initializeDatabase() {
