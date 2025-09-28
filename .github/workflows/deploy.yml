@@ -162,14 +162,11 @@ jobs:
             --name ${{ needs.setup.outputs.webapp-name }}
 
       - name: Deploy to Azure Web App
-        run: |
-          # Upload and deploy the zip file with no startup verification
-          az webapp deploy \
-            --resource-group ${{ needs.setup.outputs.resource-group }} \
-            --name ${{ needs.setup.outputs.webapp-name }} \
-            --src-path ./api-deployment.zip \
-            --type zip \
-            --async true
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ needs.setup.outputs.webapp-name }}
+          package: ./api-deployment.zip
+          startup-command: 'npm start'
 
   # Deploy Frontend
   deploy-frontend:
