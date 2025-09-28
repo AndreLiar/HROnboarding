@@ -163,12 +163,13 @@ jobs:
 
       - name: Deploy to Azure Web App
         run: |
-          # Upload and deploy the zip file
+          # Upload and deploy the zip file with no startup verification
           az webapp deploy \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
             --src-path ./api-deployment.zip \
-            --type zip
+            --type zip \
+            --async true
 
   # Deploy Frontend
   deploy-frontend:
