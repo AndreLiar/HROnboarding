@@ -29,13 +29,15 @@ function Checklist({ checklist, role, department, onChange }) {
 
   const startEdit = (index, text) => {
     setEditingIndex(index)
-    setEditText(text)
+    setEditText(typeof text === 'object' ? text.étape : text)
   }
 
   const saveEdit = () => {
     if (editText.trim()) {
       const newChecklist = [...checklist]
-      newChecklist[editingIndex] = editText.trim()
+      newChecklist[editingIndex] = typeof checklist[editingIndex] === 'object' 
+        ? { étape: editText.trim() }
+        : editText.trim()
       onChange(newChecklist)
     }
     setEditingIndex(-1)
@@ -54,7 +56,10 @@ function Checklist({ checklist, role, department, onChange }) {
 
   const addNewItem = () => {
     if (newItem.trim()) {
-      const newChecklist = [...checklist, newItem.trim()]
+      const newItemFormatted = checklist.length > 0 && typeof checklist[0] === 'object'
+        ? { étape: newItem.trim() }
+        : newItem.trim()
+      const newChecklist = [...checklist, newItemFormatted]
       onChange(newChecklist)
       setNewItem('')
       setAddingNew(false)
@@ -109,7 +114,7 @@ function Checklist({ checklist, role, department, onChange }) {
               </Box>
             ) : (
               <>
-                <ListItemText primary={item} />
+                <ListItemText primary={typeof item === 'object' ? item.étape : item} />
                 <IconButton 
                   onClick={() => startEdit(index, item)} 
                   size="small"
