@@ -1,4 +1,4 @@
-# HR Onboarding - Terraform Variables
+# HR Onboarding - Student-Friendly Variables
 
 variable "app_name" {
   description = "Application name prefix for all resources"
@@ -15,7 +15,7 @@ variable "environment" {
   type        = string
   validation {
     condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Environment must be dev, staging, or prod."
+    error_message = "Environment must be one of: dev, staging, prod."
   }
 }
 
@@ -25,56 +25,23 @@ variable "location" {
   default     = "West Europe"
 }
 
-variable "enable_azure_openai" {
-  description = "Enable Azure OpenAI service (may not be available in all regions)"
-  type        = bool
-  default     = true
-}
-
-variable "openai_location" {
-  description = "Azure region for OpenAI service (separate from main location)"
+variable "sql_admin_username" {
+  description = "Administrator username for SQL Server"
   type        = string
-  default     = "East US"
+  default     = "sqladmin"
   validation {
-    condition     = contains(["East US", "West Europe", "South Central US", "Australia East"], var.openai_location)
-    error_message = "OpenAI location must be one of: East US, West Europe, South Central US, Australia East."
+    condition     = can(regex("^[a-zA-Z][a-zA-Z0-9]{2,}$", var.sql_admin_username))
+    error_message = "SQL admin username must start with a letter and be at least 3 characters."
   }
 }
 
-variable "cosmos_throughput" {
-  description = "Cosmos DB database throughput (RU/s)"
-  type        = number
-  default     = 400
+variable "sql_admin_password" {
+  description = "Administrator password for SQL Server"
+  type        = string
+  sensitive   = true
+  default     = "HROnboarding2024!"
   validation {
-    condition     = var.cosmos_throughput >= 400 && var.cosmos_throughput <= 4000
-    error_message = "Cosmos DB throughput must be between 400 and 4000 RU/s."
+    condition     = length(var.sql_admin_password) >= 8
+    error_message = "Password must be at least 8 characters long."
   }
-}
-
-variable "app_service_sku" {
-  description = "App Service Plan SKU"
-  type        = string
-  default     = "B1"
-  validation {
-    condition     = contains(["B1", "B2", "S1", "S2", "P1v2", "P2v2"], var.app_service_sku)
-    error_message = "App Service SKU must be one of: B1, B2, S1, S2, P1v2, P2v2."
-  }
-}
-
-variable "subscription_id" {
-  description = "Azure subscription ID"
-  type        = string
-  default     = null
-}
-
-variable "tenant_id" {
-  description = "Azure tenant ID"
-  type        = string
-  default     = null
-}
-
-variable "additional_tags" {
-  description = "Additional tags to apply to all resources"
-  type        = map(string)
-  default     = {}
 }
