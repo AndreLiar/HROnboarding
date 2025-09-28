@@ -143,8 +143,8 @@ jobs:
 
       - name: Create deployment package
         run: |
+          # Include node_modules in deployment for Azure Free tier
           zip -r ../api-deployment.zip . \
-            -x "node_modules/.cache/*" \
             -x "*.log" \
             -x ".env*"
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
