@@ -45,3 +45,14 @@ variable "sql_admin_password" {
     error_message = "Password must be at least 8 characters long."
   }
 }
+
+variable "openai_api_key" {
+  description = "OpenAI API key for AI-powered checklist generation"
+  type        = string
+  sensitive   = true
+  default     = "your-openai-api-key-here"
+  validation {
+    condition     = length(var.openai_api_key) >= 20
+    error_message = "OpenAI API key must be at least 20 characters long."
+  }
+}

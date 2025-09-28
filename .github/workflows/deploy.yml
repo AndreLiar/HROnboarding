@@ -116,6 +116,7 @@ jobs:
         run: |
           terraform plan \
             -var-file="environments/${{ needs.setup.outputs.environment }}.tfvars" \
+            -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
             -out=tfplan
         working-directory: ./terraform
 
