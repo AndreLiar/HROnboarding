@@ -11,6 +11,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Simple test endpoint (no dependencies)
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'HR Onboarding API is running',
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    env: process.env.NODE_ENV || 'development'
+  });
+});
+
 // SQL Server configuration
 const sqlConfig = {
   user: process.env.DATABASE_USERNAME,
