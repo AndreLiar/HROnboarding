@@ -210,18 +210,31 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ needs.setup.outputs.environment }}
     steps:
-      - name: Wait for deployment
-        run: sleep 30
+      - name: Wait for deployment and app startup
+        run: sleep 60
 
       - name: Health check API
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health || echo "000")
-          if [[ $response -ne 200 ]]; then
-            echo "API health check failed with status: $response"
-            exit 1
-          fi
-          echo "API health check passed"
+          echo "Checking API health..."
+          for i in {1..6}; do
+            echo "Attempt $i/6"
+            response=$(curl -s -o /dev/null -w "%{http_code}" \
+              https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health || echo "000")
+            echo "Status: $response"
+            if [[ $response -eq 200 ]]; then
+              echo "API health check passed"
+              exit 0
+            fi
+            if [[ $i -lt 6 ]]; then
+              echo "Waiting 30 seconds before retry..."
+              sleep 30
+            fi
+          done
+          echo "API health check failed after 6 attempts"
+          echo "Last status: $response"
+          # Get more info about the error
+          curl -v https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health || true
+          exit 1
 
       - name: Health check Frontend
         run: |
