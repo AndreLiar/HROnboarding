@@ -71,6 +71,10 @@ resource "azurerm_linux_web_app" "api" {
   }
 
   https_only = true
+  
+  # Enable basic authentication for publishing (required for deployments)
+  ftp_publish_basic_authentication_enabled       = true
+  webdeploy_publish_basic_authentication_enabled = true
 
   tags = merge(local.common_tags, {
     Component = "API"

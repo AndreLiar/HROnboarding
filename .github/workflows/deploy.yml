@@ -155,10 +155,13 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ needs.setup.outputs.webapp-name }}
-          package: ./api-deployment.zip
+        run: |
+          # Upload and deploy the zip file
+          az webapp deploy \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --src-path ./api-deployment.zip \
+            --type zip
 
   # Deploy Frontend
   deploy-frontend:
