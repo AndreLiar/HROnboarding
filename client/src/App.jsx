@@ -5,7 +5,7 @@ import Checklist from './components/Checklist'
 import Share from './components/Share'
 import axios from 'axios'
 
-const API_BASE = import.meta.env.PROD ? '/api' : 'http://localhost:3001'
+const API_BASE = import.meta.env.PROD ? 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net' : 'http://localhost:3001'
 
 function App() {
   const [checklist, setChecklist] = useState([])
