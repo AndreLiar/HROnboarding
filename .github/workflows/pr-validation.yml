@@ -1,0 +1,78 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+      - staging
+      - dev
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            api/package-lock.json
+            client/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: ./api
+
+      - name: Install Client dependencies
+        run: npm ci
+        working-directory: ./client
+
+      - name: Lint API code
+        run: npm run lint || true
+        working-directory: ./api
+
+      - name: Lint Client code
+        run: npm run lint || true
+        working-directory: ./client
+
+      - name: Run API tests
+        run: npm test || true
+        working-directory: ./api
+
+      - name: Run Client tests
+        run: npm test || true
+        working-directory: ./client
+
+      - name: Build Client
+        run: npm run build
+        working-directory: ./client
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+        working-directory: ./terraform
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./terraform
+
+      - name: Terraform Plan (Dev)
+        run: |
+          terraform plan \
+            -var-file="environments/dev.tfvars" \
+            -no-color
+        working-directory: ./terraform

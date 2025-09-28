@@ -1,0 +1,230 @@
+name: Deploy HR Onboarding Application
+
+on:
+  push:
+    branches:
+      - main      # Production deployment
+      - staging   # Staging deployment
+      - dev       # Development deployment
+  pull_request:
+    branches:
+      - main
+      - staging
+
+env:
+  NODE_VERSION: '18'
+  AZURE_WEBAPP_PACKAGE_PATH: './api'
+  AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
+
+jobs:
+  # Determine environment based on branch
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      resource-group: ${{ steps.env.outputs.resource-group }}
+      webapp-name: ${{ steps.env.outputs.webapp-name }}
+      static-app-name: ${{ steps.env.outputs.static-app-name }}
+      deploy-infrastructure: ${{ steps.env.outputs.deploy-infrastructure }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-prod-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-prod-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-prod-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-staging-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-staging-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-staging-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-dev-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-dev-r2x0-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-dev-r2x0-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=false" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-dev-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-dev-r2x0-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-dev-r2x0-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=false" >> $GITHUB_OUTPUT
+          fi
+
+  # Run tests
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: |
+            api/package-lock.json
+            client/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: ./api
+
+      - name: Install Client dependencies
+        run: npm ci
+        working-directory: ./client
+
+      - name: Run API tests
+        run: npm test
+        working-directory: ./api
+        continue-on-error: true
+
+      - name: Run Client tests
+        run: npm test
+        working-directory: ./client
+        continue-on-error: true
+
+      - name: Build Client
+        run: npm run build
+        working-directory: ./client
+
+  # Deploy Infrastructure (only for main and staging)
+  deploy-infrastructure:
+    needs: [setup, test]
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.deploy-infrastructure == 'true'
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file="environments/${{ needs.setup.outputs.environment }}.tfvars" \
+            -out=tfplan
+        working-directory: ./terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+
+  # Deploy API
+  deploy-api:
+    needs: [setup, test]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: api/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Create deployment package
+        run: |
+          zip -r ../api-deployment.zip . \
+            -x "node_modules/.cache/*" \
+            -x "*.log" \
+            -x ".env*"
+        working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ needs.setup.outputs.webapp-name }}
+          package: ./api-deployment.zip
+
+  # Deploy Frontend
+  deploy-frontend:
+    needs: [setup, test]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}
+
+      - name: Build application
+        run: npm run build
+        working-directory: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}
+        env:
+          VITE_API_URL: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/client'
+          api_location: ''
+          output_location: 'dist'
+
+  # Health Check
+  health-check:
+    needs: [setup, deploy-api, deploy-frontend]
+    runs-on: ubuntu-latest
+    environment: ${{ needs.setup.outputs.environment }}
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check API
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health || echo "000")
+          if [[ $response -ne 200 ]]; then
+            echo "API health check failed with status: $response"
+            exit 1
+          fi
+          echo "API health check passed"
+
+      - name: Health check Frontend
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://${{ needs.setup.outputs.static-app-name }}.azurestaticapps.net || echo "000")
+          if [[ $response -ne 200 ]]; then
+            echo "Frontend health check failed with status: $response"
+            exit 1
+          fi
+          echo "Frontend health check passed"

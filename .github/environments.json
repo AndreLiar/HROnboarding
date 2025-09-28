@@ -1,0 +1,31 @@
+{
+  "environments": {
+    "dev": {
+      "branch": "dev",
+      "azure_resource_group": "hr-onboarding-dev-rg",
+      "azure_webapp_name": "hr-onboarding-dev-r2x0-api",
+      "azure_static_app_name": "hr-onboarding-dev-r2x0-web",
+      "terraform_workspace": "dev",
+      "requires_approval": false,
+      "auto_deploy": true
+    },
+    "staging": {
+      "branch": "staging", 
+      "azure_resource_group": "hr-onboarding-staging-rg",
+      "azure_webapp_name": "hr-onboarding-staging-api",
+      "azure_static_app_name": "hr-onboarding-staging-web",
+      "terraform_workspace": "staging",
+      "requires_approval": false,
+      "auto_deploy": true
+    },
+    "prod": {
+      "branch": "main",
+      "azure_resource_group": "hr-onboarding-prod-rg", 
+      "azure_webapp_name": "hr-onboarding-prod-api",
+      "azure_static_app_name": "hr-onboarding-prod-web",
+      "terraform_workspace": "prod",
+      "requires_approval": true,
+      "auto_deploy": false
+    }
+  }
+}

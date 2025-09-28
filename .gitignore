@@ -47,6 +47,14 @@ jspm_packages/
 # dotenv environment variables file
 .env
 
+# Terraform files
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfplan
+terraform/.terraform.lock.hcl
+azure-credentials.json
+
 # IDE files
 .vscode/
 .idea/
