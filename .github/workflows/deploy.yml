@@ -154,6 +154,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Start Azure Web App
+        run: |
+          # Start the web app if it's stopped (common with Free tier)
+          az webapp start \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }}
+
       - name: Deploy to Azure Web App
         run: |
           # Upload and deploy the zip file
