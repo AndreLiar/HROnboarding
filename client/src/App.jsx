@@ -7,6 +7,10 @@ import axios from 'axios'
 
 const API_BASE = import.meta.env.PROD ? 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net' : 'http://localhost:3001'
 
+// Debug: Log API base URL
+console.log('API_BASE:', API_BASE)
+console.log('Environment:', import.meta.env.MODE)
+
 function App() {
   const [checklist, setChecklist] = useState([])
   const [role, setRole] = useState('')
@@ -47,17 +51,24 @@ function App() {
       setLoading(true)
       setError('')
       
+      console.log('Generating checklist for:', selectedRole, selectedDepartment)
+      console.log('API URL:', `${API_BASE}/generate`)
+      
       const response = await axios.post(`${API_BASE}/generate`, {
         role: selectedRole,
         department: selectedDepartment
       })
+      
+      console.log('API Response:', response.data)
       
       setChecklist(response.data.checklist)
       setRole(selectedRole)
       setDepartment(selectedDepartment)
       setShareSlug('')
     } catch (err) {
-      setError('Erreur lors de la génération de la checklist')
+      console.error('API Error:', err)
+      console.error('Error details:', err.response?.data)
+      setError(`Erreur lors de la génération de la checklist: ${err.message}`)
     } finally {
       setLoading(false)
     }
