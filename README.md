@@ -1,45 +1,72 @@
-# HR Onboarding - Générateur de Checklist
+# HR Onboarding - Générateur de Checklist d'Intégration
 
-Application web full-stack pour générer et partager des checklists d'intégration RH personnalisées par rôle et département.
+Application web full-stack pour générer et partager des checklists d'intégration RH personnalisées par rôle et département, avec conformité française intégrée.
 
-## Structure du Projet
+## 🎯 Fonctionnalités
+
+✅ **Génération IA** - Checklists personnalisées via OpenAI GPT-3.5-turbo  
+✅ **Conformité française** - DPAE, RGPD, médecine du travail intégrés  
+✅ **Interface intuitive** - Material UI responsive  
+✅ **Édition interactive** - Modification en ligne des éléments  
+✅ **Partage instantané** - Liens courts pour partager les checklists  
+✅ **API documentée** - Documentation Swagger interactive  
+✅ **Production ready** - Déployé sur Azure avec CI/CD  
+
+## 📁 Structure du Projet
 
 ```
 HROnboarding/
+├── .github/                # GitHub Actions workflows
+│   └── workflows/
+│       └── deploy.yml      # CI/CD automatisé
 ├── api/                    # Backend Node.js + Express
-│   ├── server.js          # Point d'entrée API
+│   ├── server.js          # API avec Swagger documentation
 │   ├── package.json       # Dépendances backend
 │   └── .env.example       # Variables d'environnement
-├── client/                # Frontend React + Vite
+├── client/                 # Frontend React + Vite
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Selector.jsx    # Sélecteurs rôle/département
-│   │   │   ├── Checklist.jsx   # Liste éditable
-│   │   │   └── Share.jsx       # Génération de lien
+│   │   │   ├── Checklist.jsx   # Liste éditable interactive
+│   │   │   └── Share.jsx       # Génération de liens
 │   │   ├── App.jsx        # Composant principal
 │   │   └── main.jsx       # Point d'entrée React
 │   ├── package.json       # Dépendances frontend
-│   └── vite.config.js     # Configuration Vite
+│   ├── vite.config.js     # Configuration Vite
+│   └── staticwebapp.config.json # Configuration Azure SWA
+├── terraform/              # Infrastructure as Code
+│   ├── main.tf            # Ressources Azure principales
+│   ├── variables.tf       # Variables Terraform
+│   └── environments/      # Configurations par environnement
 └── README.md              # Documentation
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 - **Frontend**: React 18 + Vite + Material UI
-- **Backend**: Node.js + Express
-- **Base de données**: Azure Cosmos DB for NoSQL
-- **IA**: Azure OpenAI (GPT-4)
-- **Déploiement**: Azure Static Web Apps + Azure App Service
+- **Backend**: Node.js + Express + Swagger UI
+- **Base de données**: Azure SQL Database (serverless)
+- **IA**: OpenAI API (GPT-3.5-turbo)
+- **Infrastructure**: Terraform
+- **Déploiement**: Azure Static Web Apps + App Service
+- **CI/CD**: GitHub Actions multi-environnements
 
-## Installation et Développement
+## 🚀 Déploiement Live
+
+- **Application**: https://mango-pebble-0d01d2103.1.azurestaticapps.net/
+- **API**: https://hr-onboarding-dev-r2x0-api.azurewebsites.net/
+- **Documentation API**: https://hr-onboarding-dev-r2x0-api.azurewebsites.net/api-docs
+
+## 🔧 Installation et Développement
 
 ### Prérequis
 - Node.js 18+
-- Compte Azure avec Cosmos DB et OpenAI configurés
+- Compte Azure
+- Clé OpenAI API
 
 ### Configuration Backend
 
-1. **Installation des dépendances**:
+1. **Installation**:
 ```bash
 cd api
 npm install
@@ -50,168 +77,52 @@ npm install
 cp .env.example .env
 ```
 
-Configurez les variables dans `.env`:
+Configurez dans `.env`:
 ```env
 PORT=3001
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
-AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4
-COSMOS_DB_ENDPOINT=https://your-account.documents.azure.com:443/
-COSMOS_DB_KEY=your-primary-key
-COSMOS_DB_DATABASE_ID=hr-onboarding
-COSMOS_DB_CONTAINER_ID=checklists
+DATABASE_SERVER=your-server.database.windows.net
+DATABASE_NAME=hr-onboarding
+DATABASE_USERNAME=your-username
+DATABASE_PASSWORD=your-password
+OPENAI_API_KEY=your-openai-key
+OPENAI_API_ENDPOINT=https://api.openai.com/v1
 ```
 
-3. **Démarrage du serveur**:
+3. **Démarrage**:
 ```bash
-npm run dev
+npm start
 ```
 
 ### Configuration Frontend
 
-1. **Installation des dépendances**:
+1. **Installation**:
 ```bash
 cd client
 npm install
 ```
 
-2. **Démarrage du serveur de développement**:
+2. **Développement**:
 ```bash
 npm run dev
 ```
 
-## Configuration Azure
+## 📊 API Endpoints
 
-### Cosmos DB
+### 🔍 Documentation Interactive
+Accédez à la documentation Swagger complète : `/api-docs`
 
-1. **Créer une base de données**:
-```bash
-az cosmosdb sql database create \
-  --account-name your-account \
-  --resource-group your-rg \
-  --name hr-onboarding
-```
+### 🚀 Endpoints Principaux
 
-2. **Créer un conteneur**:
-```bash
-az cosmosdb sql container create \
-  --account-name your-account \
-  --resource-group your-rg \
-  --database-name hr-onboarding \
-  --name checklists \
-  --partition-key-path "/slug" \
-  --throughput 400
-```
+#### `GET /`
+Status de l'API et informations système.
 
-### Azure OpenAI
-
-1. **Créer la ressource OpenAI**:
-```bash
-az cognitiveservices account create \
-  --name your-openai-resource \
-  --resource-group your-rg \
-  --kind OpenAI \
-  --sku S0 \
-  --location eastus
-```
-
-2. **Déployer le modèle GPT-4**:
-```bash
-az cognitiveservices account deployment create \
-  --name your-openai-resource \
-  --resource-group your-rg \
-  --deployment-name gpt-4 \
-  --model-name gpt-4 \
-  --model-version "1106-Preview" \
-  --model-format OpenAI \
-  --scale-settings-scale-type "Standard"
-```
-
-## Déploiement
-
-### Backend (Azure App Service)
-
-1. **Créer l'App Service**:
-```bash
-az appservice plan create \
-  --name hr-onboarding-plan \
-  --resource-group your-rg \
-  --sku B1 \
-  --is-linux
-
-az webapp create \
-  --resource-group your-rg \
-  --plan hr-onboarding-plan \
-  --name hr-onboarding-api \
-  --runtime "NODE|18-lts"
-```
-
-2. **Configurer les variables d'environnement**:
-```bash
-az webapp config appsettings set \
-  --resource-group your-rg \
-  --name hr-onboarding-api \
-  --settings \
-    AZURE_OPENAI_ENDPOINT="https://your-resource.openai.azure.com/" \
-    AZURE_OPENAI_API_KEY="your-api-key" \
-    AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4" \
-    COSMOS_DB_ENDPOINT="https://your-account.documents.azure.com:443/" \
-    COSMOS_DB_KEY="your-primary-key" \
-    COSMOS_DB_DATABASE_ID="hr-onboarding" \
-    COSMOS_DB_CONTAINER_ID="checklists"
-```
-
-3. **Déployer le code**:
-```bash
-cd api
-zip -r ../api.zip .
-az webapp deployment source config-zip \
-  --resource-group your-rg \
-  --name hr-onboarding-api \
-  --src ../api.zip
-```
-
-### Frontend (Azure Static Web Apps)
-
-1. **Builder le projet**:
-```bash
-cd client
-npm run build
-```
-
-2. **Créer la Static Web App**:
-```bash
-az staticwebapp create \
-  --name hr-onboarding-frontend \
-  --resource-group your-rg \
-  --source https://github.com/your-username/hr-onboarding \
-  --location "West Europe" \
-  --branch main \
-  --app-location "/client" \
-  --build-location "dist"
-```
-
-3. **Configuration du proxy API** dans `staticwebapp.config.json`:
-```json
-{
-  "routes": [
-    {
-      "route": "/api/*",
-      "rewrite": "https://hr-onboarding-api.azurewebsites.net/*"
-    }
-  ]
-}
-```
-
-## API Endpoints
-
-### POST /generate
-Génère une checklist avec IA.
+#### `POST /generate`
+Génère une checklist personnalisée.
 
 **Request**:
 ```json
 {
-  "role": "Développeur Junior",
+  "role": "Développeur Senior",
   "department": "Informatique"
 }
 ```
@@ -220,66 +131,97 @@ Génère une checklist avec IA.
 ```json
 {
   "checklist": [
-    "Compléter la Déclaration Préalable à l'Embauche (DPAE)",
-    "Créer un compte utilisateur et configurer l'accès aux outils internes"
+    {"étape": "Compléter la Déclaration Préalable à l'Embauche (DPAE)"},
+    {"étape": "Formation à la sécurité informatique et accès aux outils internes"},
+    {"étape": "Examen médical obligatoire avec le médecin du travail"}
   ],
-  "role": "Développeur Junior",
+  "role": "Développeur Senior",
   "department": "Informatique"
 }
 ```
 
-### POST /share
-Sauvegarde une checklist et retourne un slug.
+#### `POST /share`
+Sauvegarde et génère un lien de partage.
 
-**Request**:
-```json
-{
-  "checklist": ["Item 1", "Item 2"],
-  "role": "Développeur Junior",
-  "department": "Informatique"
-}
-```
-
-**Response**:
-```json
-{
-  "slug": "abc123xyz"
-}
-```
-
-### GET /c/:slug
+#### `GET /c/:slug`
 Récupère une checklist partagée.
 
-**Response**:
-```json
-{
-  "checklist": ["Item 1", "Item 2"],
-  "role": "Développeur Junior",
-  "department": "Informatique",
-  "createdAt": "2023-12-01T10:00:00.000Z"
-}
-```
+#### `GET /health`
+Vérification de l'état des services (base de données, OpenAI).
 
-## Fonctionnalités
+## 🏗️ Infrastructure
 
-✅ Génération de checklist IA avec prompts spécialisés France  
-✅ Interface Material UI responsive  
-✅ Édition en ligne des éléments  
-✅ Partage via liens courts  
-✅ Stockage Cosmos DB  
-✅ Prêt pour production Azure  
+### Azure Resources
+- **App Service Plan**: F1 Free tier
+- **App Service**: API backend
+- **SQL Database**: Free tier (32MB)
+- **Static Web App**: Frontend hosting
+- **Resource Groups**: Organisation par environnement
 
-## Sécurité
+### Environments
+- **Development**: `hr-onboarding-dev-rg`
+- **Staging**: `hr-onboarding-staging-rg` (à venir)
+- **Production**: `hr-onboarding-prod-rg` (à venir)
 
-- Variables d'environnement pour toutes les clés API
-- Validation des entrées côté serveur
-- CORS configuré pour le domaine de production
-- Pas de stockage de données sensibles côté client
+## 🔒 Sécurité
 
-## Évolutions Futures
+- **Variables d'environnement** pour toutes les clés sensibles
+- **Validation des entrées** côté serveur
+- **CORS configuré** pour domaines autorisés
+- **SQL paramétrisé** contre les injections
+- **Chiffrement TLS** en production
 
-- Intégration SharePoint Online
-- Authentification Microsoft Entra ID
-- Templates de checklist personnalisables
-- Notifications par email
-- Analytics et métriques d'usage# HROnboarding
+## 📈 Coûts Azure
+
+**Actuel (Free tier)**: ~$0.50-$2.00/mois
+- App Service F1: Gratuit
+- SQL Database Free: Gratuit
+- Static Web App: Gratuit  
+- OpenAI API: ~$0.50-$2.00 selon usage
+
+## 🔄 CI/CD Pipeline
+
+GitHub Actions automatise:
+- ✅ Tests et build
+- ✅ Déploiement infrastructure (Terraform)
+- ✅ Déploiement API (App Service)
+- ✅ Déploiement frontend (Static Web Apps)
+- ✅ Health checks post-déploiement
+
+## 🌍 Conformité Française
+
+L'application intègre les exigences légales françaises :
+- **DPAE** - Déclaration Préalable à l'Embauche
+- **Médecine du travail** - Visites obligatoires
+- **RGPD** - Protection des données
+- **Sécurité informatique** - Formations obligatoires
+- **Confidentialité** - Accords de non-divulgation
+
+## 🚧 Évolutions Prévues
+
+### Phase 1: Smart Templates
+- Moteur de templates rule-based
+- Conformité industrie-spécifique
+- Templates personnalisables
+
+### Phase 2: Workflow Management  
+- Attribution de tâches
+- Suivi de progression
+- Gestion des délais
+
+### Phase 3: Enterprise Features
+- Authentification multi-utilisateurs
+- Intégration HRIS
+- Analytics avancés
+
+## 🤝 Contribution
+
+1. Fork le projet
+2. Créer une branche feature (`git checkout -b feature/AmazingFeature`)
+3. Commit (`git commit -m 'Add AmazingFeature'`)
+4. Push (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
+
+## 📄 License
+
+Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour les détails.
