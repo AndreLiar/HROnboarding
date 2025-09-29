@@ -197,23 +197,6 @@ L'application intègre les exigences légales françaises :
 - **Sécurité informatique** - Formations obligatoires
 - **Confidentialité** - Accords de non-divulgation
 
-## 🚧 Évolutions Prévues
-
-### Phase 1: Smart Templates
-- Moteur de templates rule-based
-- Conformité industrie-spécifique
-- Templates personnalisables
-
-### Phase 2: Workflow Management  
-- Attribution de tâches
-- Suivi de progression
-- Gestion des délais
-
-### Phase 3: Enterprise Features
-- Authentification multi-utilisateurs
-- Intégration HRIS
-- Analytics avancés
-
 ## 🤝 Contribution
 
 1. Fork le projet
