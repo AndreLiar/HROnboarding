@@ -12,7 +12,7 @@ on:
       - staging
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   AZURE_WEBAPP_PACKAGE_PATH: './api'
   AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
 
@@ -75,15 +75,37 @@ jobs:
         run: npm install
         working-directory: ./client
 
+      - name: Lint API code
+        run: npm run lint
+        working-directory: ./api
+
+      - name: Lint Client code
+        run: npm run lint
+        working-directory: ./client
+
+      - name: Check API formatting
+        run: npm run format:check
+        working-directory: ./api
+
+      - name: Check Client formatting
+        run: npm run format:check
+        working-directory: ./client
+
+      - name: Security audit API
+        run: npm audit --audit-level=moderate
+        working-directory: ./api
+
+      - name: Security audit Client
+        run: npm audit --audit-level=moderate
+        working-directory: ./client
+
       - name: Run API tests
         run: npm test
         working-directory: ./api
-        continue-on-error: true
 
       - name: Run Client tests
         run: npm test
         working-directory: ./client
-        continue-on-error: true
 
       - name: Build Client
         run: npm run build
@@ -231,9 +253,9 @@ jobs:
           echo "Last status: $response"
           # Get more info about the error
           curl -v https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health || true
-          echo "WARNING: Health check failed but continuing deployment"
+          echo "ERROR: API health check failed - deployment failed"
           echo "Check Azure Portal logs for startup issues"
-          exit 0
+          exit 1
 
       - name: Azure Login for Frontend Check
         uses: azure/login@v1
@@ -249,7 +271,7 @@ jobs:
             https://$STATIC_URL || echo "000")
           if [[ $response -ne 200 ]]; then
             echo "Frontend health check failed with status: $response"
-            echo "Note: Frontend may not be deployed yet - this is expected"
-            exit 0
+            echo "ERROR: Frontend deployment failed"
+            exit 1
           fi
           echo "Frontend health check passed"
