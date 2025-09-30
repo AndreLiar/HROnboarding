@@ -17,8 +17,34 @@ env:
   AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
 
 jobs:
+  # Generate semantic version
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version-tag: ${{ steps.version.outputs.version-tag }}
+      changelog: ${{ steps.version.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "BREAKING CHANGE:"
+          minor_pattern: "feat:"
+          version_format: "${major}.${minor}.${patch}"
+          change_path: "."
+          namespace: ""
+          bump_each_commit: false
+          search_commit_body: true
+
   # Determine environment based on branch
   setup:
+    needs: version
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
@@ -26,12 +52,14 @@ jobs:
       webapp-name: ${{ steps.env.outputs.webapp-name }}
       static-app-name: ${{ steps.env.outputs.static-app-name }}
       deploy-infrastructure: ${{ steps.env.outputs.deploy-infrastructure }}
+      version: ${{ needs.version.outputs.version }}
+      version-tag: ${{ needs.version.outputs.version-tag }}
     steps:
       - name: Determine environment
         id: env
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
             echo "resource-group=hr-onboarding-prod-rg" >> $GITHUB_OUTPUT
             echo "webapp-name=hr-onboarding-prod-api" >> $GITHUB_OUTPUT
             echo "static-app-name=hr-onboarding-prod-web" >> $GITHUB_OUTPUT
@@ -58,6 +86,7 @@ jobs:
 
   # Run tests
   test:
+    needs: setup
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -116,7 +145,9 @@ jobs:
     needs: [setup, test]
     runs-on: ubuntu-latest
     if: needs.setup.outputs.deploy-infrastructure == 'true'
-    environment: ${{ needs.setup.outputs.environment }}
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v4
 
@@ -150,7 +181,9 @@ jobs:
   deploy-api:
     needs: [setup, test]
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v4
 
@@ -170,6 +203,13 @@ jobs:
             -x "*.log" \
             -x ".env*"
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Upload API artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hr-onboarding-api-${{ needs.setup.outputs.version }}
+          path: ./api-deployment.zip
+          retention-days: 30
 
       - name: Azure Login
         uses: azure/login@v1
@@ -194,7 +234,9 @@ jobs:
   deploy-frontend:
     needs: [setup, test]
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.static-app-name }}.azurewebsites.net
     steps:
       - uses: actions/checkout@v4
 
@@ -213,6 +255,13 @@ jobs:
         env:
           VITE_API_URL: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
 
+      - name: Upload Client artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hr-onboarding-client-${{ needs.setup.outputs.version }}
+          path: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}/dist/
+          retention-days: 30
+
       - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
@@ -227,7 +276,9 @@ jobs:
   health-check:
     needs: [setup, deploy-api, deploy-frontend]
     runs-on: ubuntu-latest
-    environment: ${{ needs.setup.outputs.environment }}
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
     steps:
       - name: Wait for deployment and app startup
         run: sleep 60
@@ -275,3 +326,61 @@ jobs:
             exit 1
           fi
           echo "Frontend health check passed"
+
+  # Create GitHub Release (only for production)
+  create-release:
+    needs: [setup, health-check]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # First release - get all commits
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # Get commits since last tag
+            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+          
+          # Save changelog to output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.setup.outputs.version-tag }}
+          release_name: Release ${{ needs.setup.outputs.version }}
+          body: |
+            ## 🚀 Release ${{ needs.setup.outputs.version }}
+            
+            ### 📋 Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### 🔗 Deployment URLs
+            - **API:** https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
+            - **Frontend:** [Production App](https://hr-onboarding-prod-web.azurewebsites.net)
+            - **API Docs:** https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/api-docs
+            
+            ### 📦 Artifacts
+            - API Package: `hr-onboarding-api-${{ needs.setup.outputs.version }}`
+            - Client Build: `hr-onboarding-client-${{ needs.setup.outputs.version }}`
+            
+            ---
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+          draft: false
+          prerelease: false

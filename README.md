@@ -18,7 +18,8 @@ Application web full-stack pour générer et partager des checklists d'intégrat
 HROnboarding/
 ├── .github/                # GitHub Actions workflows
 │   └── workflows/
-│       └── deploy.yml      # CI/CD automatisé
+│       ├── deploy.yml      # CI/CD automatisé avec versioning
+│       └── rollback.yml    # Workflow de rollback d'urgence
 ├── api/                    # Backend Node.js + Express
 │   ├── server.js          # API avec Swagger documentation
 │   ├── package.json       # Dépendances backend
@@ -38,6 +39,10 @@ HROnboarding/
 │   ├── main.tf            # Ressources Azure principales
 │   ├── variables.tf       # Variables Terraform
 │   └── environments/      # Configurations par environnement
+├── docs/                  # Documentation détaillée
+│   ├── DEPLOYMENT.md      # Guide de déploiement
+│   ├── ROLLBACK.md        # Procédures de rollback
+│   └── CONVENTIONAL_COMMITS.md # Guide des commits sémantiques
 └── README.md              # Documentation
 ```
 
@@ -181,12 +186,25 @@ Vérification de l'état des services (base de données, OpenAI).
 
 ## 🔄 CI/CD Pipeline
 
-GitHub Actions automatise:
-- ✅ Tests et build
+### Phase 2: Release Management ✅
+GitHub Actions automatise maintenant:
+- ✅ **Semantic Versioning** - Versioning automatique basé sur les commits
+- ✅ **Release Notes** - Génération automatique des notes de version
+- ✅ **Manual Approval** - Approbation manuelle pour la production
+- ✅ **Artifact Storage** - Stockage des packages de déploiement (30 jours)
+- ✅ **Rollback Capability** - Rollback en un clic vers versions précédentes
+- ✅ Tests et qualité (ESLint, Prettier, npm audit)
 - ✅ Déploiement infrastructure (Terraform)
 - ✅ Déploiement API (App Service)
 - ✅ Déploiement frontend (Static Web Apps)
 - ✅ Health checks post-déploiement
+
+### Environments
+- **Production** (`main`): Approbation manuelle requise
+- **Staging** (`staging`): Déploiement automatique
+- **Development** (`dev`): Déploiement immédiat
+
+📖 **Documentation complète:** [docs/](./docs/)
 
 ## 🌍 Conformité Française
 

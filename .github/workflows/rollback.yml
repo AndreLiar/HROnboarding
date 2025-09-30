@@ -1,0 +1,226 @@
+name: Rollback HR Onboarding Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - dev
+      version:
+        description: 'Version to rollback to (e.g., v1.2.3)'
+        required: true
+        type: string
+      reason:
+        description: 'Reason for rollback'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Validate rollback inputs
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      resource-group: ${{ steps.config.outputs.resource-group }}
+      webapp-name: ${{ steps.config.outputs.webapp-name }}
+      static-app-name: ${{ steps.config.outputs.static-app-name }}
+      artifact-api: ${{ steps.config.outputs.artifact-api }}
+      artifact-client: ${{ steps.config.outputs.artifact-client }}
+    steps:
+      - name: Set environment configuration
+        id: config
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            production)
+              echo "resource-group=hr-onboarding-prod-rg" >> $GITHUB_OUTPUT
+              echo "webapp-name=hr-onboarding-prod-api" >> $GITHUB_OUTPUT
+              echo "static-app-name=hr-onboarding-prod-web" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "resource-group=hr-onboarding-staging-rg" >> $GITHUB_OUTPUT
+              echo "webapp-name=hr-onboarding-staging-api" >> $GITHUB_OUTPUT
+              echo "static-app-name=hr-onboarding-staging-web" >> $GITHUB_OUTPUT
+              ;;
+            dev)
+              echo "resource-group=hr-onboarding-dev-rg" >> $GITHUB_OUTPUT
+              echo "webapp-name=hr-onboarding-dev-r2x0-api" >> $GITHUB_OUTPUT
+              echo "static-app-name=hr-onboarding-dev-r2x0-web" >> $GITHUB_OUTPUT
+              ;;
+          esac
+          
+          # Extract version number for artifact names
+          VERSION="${{ github.event.inputs.version }}"
+          VERSION_NUM="${VERSION#v}"  # Remove 'v' prefix if present
+          echo "artifact-api=hr-onboarding-api-${VERSION_NUM}" >> $GITHUB_OUTPUT
+          echo "artifact-client=hr-onboarding-client-${VERSION_NUM}" >> $GITHUB_OUTPUT
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ ! $VERSION =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.2.3 or 1.2.3"
+            exit 1
+          fi
+          echo "✅ Version format is valid: $VERSION"
+
+  # Download artifacts for rollback
+  download-artifacts:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Download API artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.validate.outputs.artifact-api }}
+          path: ./rollback-api
+
+      - name: Download Client artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.validate.outputs.artifact-client }}
+          path: ./rollback-client
+
+      - name: Verify artifacts
+        run: |
+          echo "📦 API artifacts:"
+          ls -la ./rollback-api/
+          echo "📦 Client artifacts:"
+          ls -la ./rollback-client/
+
+      - name: Re-upload artifacts for deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: rollback-deployment-${{ github.run_id }}
+          path: |
+            ./rollback-api/
+            ./rollback-client/
+          retention-days: 1
+
+  # Rollback API
+  rollback-api:
+    needs: [validate, download-artifacts]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Download rollback artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rollback-deployment-${{ github.run_id }}
+          path: ./rollback
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Stop Azure Web App
+        run: |
+          echo "🔄 Stopping API for rollback..."
+          az webapp stop \
+            --resource-group ${{ needs.validate.outputs.resource-group }} \
+            --name ${{ needs.validate.outputs.webapp-name }}
+
+      - name: Deploy API rollback
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ needs.validate.outputs.webapp-name }}
+          package: ./rollback/rollback-api/api-deployment.zip
+          startup-command: 'npm start'
+
+      - name: Start Azure Web App
+        run: |
+          echo "▶️ Starting API after rollback..."
+          az webapp start \
+            --resource-group ${{ needs.validate.outputs.resource-group }} \
+            --name ${{ needs.validate.outputs.webapp-name }}
+
+  # Rollback Frontend
+  rollback-frontend:
+    needs: [validate, download-artifacts]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download rollback artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: rollback-deployment-${{ github.run_id }}
+          path: ./rollback
+
+      - name: Deploy Frontend rollback
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/rollback/rollback-client'
+          api_location: ''
+          output_location: '.'
+
+  # Verify rollback
+  verify-rollback:
+    needs: [validate, rollback-api, rollback-frontend]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Wait for rollback deployment
+        run: sleep 60
+
+      - name: Verify API rollback
+        run: |
+          echo "🔍 Verifying API rollback..."
+          for i in {1..5}; do
+            echo "Attempt $i/5"
+            response=$(curl -s -o /dev/null -w "%{http_code}" \
+              https://${{ needs.validate.outputs.webapp-name }}.azurewebsites.net/health || echo "000")
+            if [[ $response -eq 200 ]]; then
+              echo "✅ API rollback successful"
+              break
+            fi
+            if [[ $i -lt 5 ]]; then
+              echo "Waiting 30 seconds before retry..."
+              sleep 30
+            else
+              echo "❌ API rollback verification failed"
+              exit 1
+            fi
+          done
+
+      - name: Azure Login for Frontend Check
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verify Frontend rollback
+        run: |
+          echo "🔍 Verifying Frontend rollback..."
+          STATIC_URL=$(az staticwebapp show --name ${{ needs.validate.outputs.static-app-name }} --resource-group ${{ needs.validate.outputs.resource-group }} --query "defaultHostname" -o tsv)
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://$STATIC_URL || echo "000")
+          if [[ $response -eq 200 ]]; then
+            echo "✅ Frontend rollback successful"
+          else
+            echo "❌ Frontend rollback verification failed"
+            exit 1
+          fi
+
+      - name: Create rollback summary
+        run: |
+          echo "## 🔄 Rollback Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Rolled back to:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Reason:** ${{ github.event.inputs.reason }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Initiated by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** ✅ Successful" >> $GITHUB_STEP_SUMMARY
+          echo "- **API:** https://${{ needs.validate.outputs.webapp-name }}.azurewebsites.net" >> $GITHUB_STEP_SUMMARY
