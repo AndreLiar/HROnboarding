@@ -14,8 +14,8 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
-    // Error prevention
-    'no-console': 'warn',
+    // Error prevention  
+    'no-console': 'off', // Allow console in server applications
     'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     'no-var': 'error',
     'prefer-const': 'error',
