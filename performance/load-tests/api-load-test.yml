@@ -1,0 +1,102 @@
+config:
+  target: 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 1
+      name: "Warm-up"
+    # Ramp-up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Ramp-up"
+    # Sustained load phase
+    - duration: 120
+      arrivalRate: 10
+      name: "Sustained load"
+    # Peak load phase
+    - duration: 60
+      arrivalRate: 20
+      name: "Peak load"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  processor: './load-test-processor.js'
+
+scenarios:
+  # Test API health endpoint
+  - name: "Health Check"
+    weight: 20
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+            - hasHeader: "content-type"
+          capture:
+            - json: "$.status"
+              as: "healthStatus"
+
+  # Test checklist generation (main functionality)
+  - name: "Generate Checklist"
+    weight: 60
+    flow:
+      - post:
+          url: "/generate"
+          json:
+            role: "{{ role }}"
+            department: "{{ department }}"
+          expect:
+            - statusCode: 200
+            - hasHeader: "content-type"
+          capture:
+            - json: "$.checklist"
+              as: "generatedChecklist"
+            - json: "$.role"
+              as: "responseRole"
+
+  # Test checklist sharing
+  - name: "Share Checklist"
+    weight: 15
+    flow:
+      - post:
+          url: "/share"
+          json:
+            checklist: 
+              - étape: "Compléter la DPAE"
+              - étape: "Formation sécurité"
+            role: "Développeur Junior"
+            department: "Informatique"
+          expect:
+            - statusCode: 200
+          capture:
+            - json: "$.slug"
+              as: "shareSlug"
+
+  # Test shared checklist retrieval
+  - name: "Get Shared Checklist"
+    weight: 5
+    flow:
+      - get:
+          url: "/c/{{ $randomString() }}"
+          expect:
+            - statusCode: [200, 404]  # 404 is acceptable for random slugs
+
+# Performance thresholds
+expect:
+  # 95% of requests should complete within 5 seconds
+  p95: 5000
+  # 99% of requests should complete within 10 seconds  
+  p99: 10000
+  # Average response time should be under 2 seconds
+  median: 2000
+  # Maximum acceptable response time
+  max: 15000
+
+# Metrics to track
+metrics:
+  - name: "response_time"
+    unit: "ms"
+  - name: "checklist_generation_time"
+    unit: "ms"
+  - name: "openai_api_calls"
+    unit: "count"

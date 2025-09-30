@@ -1,0 +1,145 @@
+{
+  "dashboard": {
+    "name": "HR Onboarding Application Dashboard",
+    "description": "Comprehensive monitoring dashboard for HR Onboarding application",
+    "timeRange": "PT4H",
+    "autoRefresh": "PT5M",
+    "tiles": [
+      {
+        "title": "API Response Time (95th Percentile)",
+        "type": "chart",
+        "size": "medium",
+        "query": "requests | summarize percentile(duration, 95) by bin(timestamp, 5m) | render timechart",
+        "visualization": "timechart",
+        "yAxis": {
+          "label": "Response Time (ms)",
+          "max": 10000
+        }
+      },
+      {
+        "title": "Request Success Rate",
+        "type": "chart", 
+        "size": "medium",
+        "query": "requests | summarize SuccessRate = 100.0 * countif(success == true) / count() by bin(timestamp, 5m) | render timechart",
+        "visualization": "timechart",
+        "yAxis": {
+          "label": "Success Rate (%)",
+          "min": 0,
+          "max": 100
+        }
+      },
+      {
+        "title": "Checklist Generations per Hour",
+        "type": "chart",
+        "size": "medium", 
+        "query": "requests | where url contains '/generate' | summarize count() by bin(timestamp, 1h) | render columnchart",
+        "visualization": "columnchart",
+        "yAxis": {
+          "label": "Generations"
+        }
+      },
+      {
+        "title": "Most Popular Roles",
+        "type": "chart",
+        "size": "small",
+        "query": "customEvents | where name == 'ChecklistGenerated' | summarize count() by tostring(customDimensions.role) | top 10 by count_ | render piechart",
+        "visualization": "piechart"
+      },
+      {
+        "title": "Most Popular Departments", 
+        "type": "chart",
+        "size": "small",
+        "query": "customEvents | where name == 'ChecklistGenerated' | summarize count() by tostring(customDimensions.department) | top 10 by count_ | render piechart",
+        "visualization": "piechart"
+      },
+      {
+        "title": "OpenAI API Usage",
+        "type": "chart",
+        "size": "medium",
+        "query": "customMetrics | where name == 'openai_api_calls' | summarize sum(value) by bin(timestamp, 1h) | render columnchart",
+        "visualization": "columnchart",
+        "yAxis": {
+          "label": "API Calls"
+        }
+      },
+      {
+        "title": "Estimated Daily Cost",
+        "type": "chart",
+        "size": "medium",
+        "query": "customMetrics | where name == 'openai_api_cost' | summarize DailyCost = sum(value) by bin(timestamp, 1d) | render areachart",
+        "visualization": "areachart",
+        "yAxis": {
+          "label": "Cost ($)"
+        }
+      },
+      {
+        "title": "Active Users (Last 24h)",
+        "type": "metric",
+        "size": "small",
+        "query": "requests | where timestamp > ago(24h) | summarize dcount(client_IP)",
+        "visualization": "singleValue",
+        "format": "number"
+      },
+      {
+        "title": "Total Checklists Generated",
+        "type": "metric", 
+        "size": "small",
+        "query": "requests | where url contains '/generate' and success == true | count",
+        "visualization": "singleValue",
+        "format": "number"
+      },
+      {
+        "title": "Average Response Time",
+        "type": "metric",
+        "size": "small", 
+        "query": "requests | summarize avg(duration)",
+        "visualization": "singleValue",
+        "format": "milliseconds"
+      },
+      {
+        "title": "Error Rate (Last Hour)",
+        "type": "metric",
+        "size": "small",
+        "query": "requests | where timestamp > ago(1h) | summarize ErrorRate = 100.0 * countif(success == false) / count()",
+        "visualization": "singleValue",
+        "format": "percentage"
+      },
+      {
+        "title": "Recent Errors",
+        "type": "table",
+        "size": "large",
+        "query": "requests | where success == false and timestamp > ago(4h) | project timestamp, name, resultCode, duration, url | order by timestamp desc | take 20",
+        "visualization": "table"
+      }
+    ]
+  },
+  "workbooks": [
+    {
+      "name": "HR Onboarding Performance Analysis",
+      "description": "Detailed performance analysis workbook",
+      "sections": [
+        {
+          "title": "API Performance",
+          "queries": [
+            "requests | summarize avg(duration), percentile(duration, 50), percentile(duration, 95), percentile(duration, 99) by bin(timestamp, 1h)",
+            "requests | where duration > 5000 | project timestamp, name, duration, url | order by duration desc"
+          ]
+        },
+        {
+          "title": "Business Metrics",
+          "queries": [
+            "requests | where url contains '/generate' | summarize count() by bin(timestamp, 1d)",
+            "requests | where url contains '/share' | summarize count() by bin(timestamp, 1d)"
+          ]
+        },
+        {
+          "title": "Cost Analysis",
+          "queries": [
+            "customMetrics | where name == 'openai_api_cost' | summarize sum(value) by bin(timestamp, 1d)",
+            "customMetrics | where name == 'openai_api_calls' | summarize sum(value) by bin(timestamp, 1h)"
+          ]
+        }
+      ]
+    }
+  ]
+}

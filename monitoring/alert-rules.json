@@ -1,0 +1,138 @@
+{
+  "alertRules": [
+    {
+      "name": "API Response Time Alert",
+      "description": "Alert when API response time exceeds 5 seconds",
+      "severity": 2,
+      "enabled": true,
+      "condition": {
+        "query": "requests | where duration > 5000 | summarize count() by bin(timestamp, 5m)",
+        "timeAggregation": "Average",
+        "operator": "GreaterThan",
+        "threshold": 0,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT15M"
+      },
+      "actions": [
+        {
+          "actionType": "email",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    },
+    {
+      "name": "High Error Rate Alert",
+      "description": "Alert when error rate exceeds 5%",
+      "severity": 1,
+      "enabled": true,
+      "condition": {
+        "query": "requests | summarize ErrorRate = 100.0 * countif(success == false) / count() by bin(timestamp, 5m) | where ErrorRate > 5",
+        "timeAggregation": "Average", 
+        "operator": "GreaterThan",
+        "threshold": 5,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT10M"
+      },
+      "actions": [
+        {
+          "actionType": "email",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    },
+    {
+      "name": "OpenAI API Failure Alert",
+      "description": "Alert when OpenAI API calls fail frequently",
+      "severity": 2,
+      "enabled": true,
+      "condition": {
+        "query": "traces | where message contains 'OpenAI' and message contains 'error' | summarize count() by bin(timestamp, 10m)",
+        "timeAggregation": "Total",
+        "operator": "GreaterThan", 
+        "threshold": 3,
+        "evaluationFrequency": "PT10M",
+        "windowSize": "PT20M"
+      },
+      "actions": [
+        {
+          "actionType": "email",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    },
+    {
+      "name": "Database Connection Alert",
+      "description": "Alert when database connections fail",
+      "severity": 1,
+      "enabled": true,
+      "condition": {
+        "query": "traces | where message contains 'database' and message contains 'error' | summarize count() by bin(timestamp, 5m)",
+        "timeAggregation": "Total",
+        "operator": "GreaterThan",
+        "threshold": 0,
+        "evaluationFrequency": "PT5M",
+        "windowSize": "PT15M"
+      },
+      "actions": [
+        {
+          "actionType": "email",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    },
+    {
+      "name": "Application Availability Alert",
+      "description": "Alert when application availability drops below 99%",
+      "severity": 0,
+      "enabled": true,
+      "condition": {
+        "query": "availabilityResults | summarize Availability = 100.0 * countif(success == true) / count() by bin(timestamp, 15m) | where Availability < 99",
+        "timeAggregation": "Average",
+        "operator": "LessThan", 
+        "threshold": 99,
+        "evaluationFrequency": "PT15M",
+        "windowSize": "PT30M"
+      },
+      "actions": [
+        {
+          "actionType": "email",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    },
+    {
+      "name": "High Cost Alert",
+      "description": "Alert when estimated daily OpenAI costs exceed $5",
+      "severity": 3,
+      "enabled": true,
+      "condition": {
+        "query": "customMetrics | where name == 'openai_api_cost' | summarize DailyCost = sum(value) by bin(timestamp, 1d) | where DailyCost > 5",
+        "timeAggregation": "Total",
+        "operator": "GreaterThan",
+        "threshold": 5,
+        "evaluationFrequency": "PT1H",
+        "windowSize": "PT24H"
+      },
+      "actions": [
+        {
+          "actionType": "email", 
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com"
+        }
+      ]
+    }
+  ],
+  "actionGroups": [
+    {
+      "name": "HR-Onboarding-Alerts",
+      "shortName": "HRAlerts",
+      "enabled": true,
+      "emailReceivers": [
+        {
+          "name": "Primary Admin",
+          "emailAddress": "andrelaurelyvan.kanmegnetabouguie@ynov.com",
+          "useCommonAlertSchema": true
+        }
+      ]
+    }
+  ]
+}

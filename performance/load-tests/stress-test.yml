@@ -1,0 +1,70 @@
+config:
+  target: 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net'
+  phases:
+    # Gradual ramp-up to find breaking point
+    - duration: 60
+      arrivalRate: 5
+      name: "Baseline load"
+    - duration: 60 
+      arrivalRate: 15
+      name: "Increased load"
+    - duration: 60
+      arrivalRate: 30
+      name: "High load"
+    - duration: 60
+      arrivalRate: 50
+      name: "Stress load"
+    - duration: 60
+      arrivalRate: 75
+      name: "Breaking point test"
+    # Cool down
+    - duration: 30
+      arrivalRate: 5
+      name: "Cool down"
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+  processor: './load-test-processor.js'
+
+scenarios:
+  # Focus on the most resource-intensive endpoint
+  - name: "Stress Test Checklist Generation"
+    weight: 80
+    flow:
+      - post:
+          url: "/generate"
+          json:
+            role: "{{ role }}"
+            department: "{{ department }}"
+          expect:
+            - statusCode: [200, 429, 500, 503]  # Allow error codes under stress
+          capture:
+            - json: "$.checklist"
+              as: "generatedChecklist"
+              ifExists: true
+
+  # Monitor health endpoint under stress
+  - name: "Health Check Under Stress"
+    weight: 20
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: [200, 503]  # Service may be unavailable under extreme load
+
+# Stress test expectations (more lenient)
+expect:
+  # Allow higher response times under stress
+  p95: 15000
+  p99: 30000
+  median: 5000
+  max: 60000
+
+# Track stress-specific metrics
+metrics:
+  - name: "stress_response_time"
+    unit: "ms"
+  - name: "error_rate"
+    unit: "percent"
+  - name: "concurrent_users"
+    unit: "count"

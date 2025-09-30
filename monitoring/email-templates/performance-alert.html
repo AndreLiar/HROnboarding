@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Alert - HR Onboarding</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #FF9800; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+        .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
+        .warning { color: #FF9800; font-weight: bold; }
+        .critical { color: #F44336; font-weight: bold; }
+        .alert { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .metrics { background: white; padding: 15px; border-radius: 4px; margin: 15px 0; }
+        .link { display: inline-block; background: #2196F3; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 5px; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .progress-bar { background: #f0f0f0; border-radius: 4px; height: 20px; margin: 5px 0; }
+        .progress-fill { background: #FF9800; height: 100%; border-radius: 4px; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Performance Alert</h1>
+            <h2>HR Onboarding Application</h2>
+        </div>
+        
+        <div class="content">
+            <div class="alert">
+                <h3>🚨 Alert Details</h3>
+                <table>
+                    <tr>
+                        <th>Alert Name</th>
+                        <td>{{ALERT_NAME}}</td>
+                    </tr>
+                    <tr>
+                        <th>Environment</th>
+                        <td>{{ENVIRONMENT}}</td>
+                    </tr>
+                    <tr>
+                        <th>Severity</th>
+                        <td class="{{SEVERITY_CLASS}}">{{SEVERITY}}</td>
+                    </tr>
+                    <tr>
+                        <th>Triggered At</th>
+                        <td>{{TIMESTAMP}}</td>
+                    </tr>
+                    <tr>
+                        <th>Duration</th>
+                        <td>{{DURATION}}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="metrics">
+                <h3>📊 Current Metrics</h3>
+                <table>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Current Value</th>
+                        <th>Threshold</th>
+                        <th>Status</th>
+                    </tr>
+                    <tr>
+                        <td>API Response Time (95th)</td>
+                        <td>{{API_RESPONSE_TIME}}ms</td>
+                        <td>5000ms</td>
+                        <td class="{{API_STATUS_CLASS}}">{{API_STATUS}}</td>
+                    </tr>
+                    <tr>
+                        <td>Error Rate</td>
+                        <td>{{ERROR_RATE}}%</td>
+                        <td>5%</td>
+                        <td class="{{ERROR_STATUS_CLASS}}">{{ERROR_STATUS}}</td>
+                    </tr>
+                    <tr>
+                        <td>Active Users</td>
+                        <td>{{ACTIVE_USERS}}</td>
+                        <td>N/A</td>
+                        <td>{{USERS_STATUS}}</td>
+                    </tr>
+                    <tr>
+                        <td>OpenAI API Calls/Hour</td>
+                        <td>{{OPENAI_CALLS}}</td>
+                        <td>N/A</td>
+                        <td>{{OPENAI_STATUS}}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="metrics">
+                <h3>🔍 Recommended Actions</h3>
+                <ul>
+                    <li><strong>Immediate:</strong> Check Application Insights dashboard for root cause</li>
+                    <li><strong>Investigation:</strong> Review recent deployments and changes</li>
+                    <li><strong>Monitoring:</strong> Watch for auto-recovery within 15 minutes</li>
+                    <li><strong>Escalation:</strong> Consider rollback if issue persists > 30 minutes</li>
+                </ul>
+            </div>
+
+            <div class="metrics">
+                <h3>🔗 Investigation Links</h3>
+                <a href="{{DASHBOARD_URL}}" class="link">View Dashboard</a>
+                <a href="{{LOGS_URL}}" class="link">Check Logs</a>
+                <a href="{{API_HEALTH_URL}}" class="link">API Health</a>
+                <a href="{{ROLLBACK_URL}}" class="link">Emergency Rollback</a>
+            </div>
+
+            <div class="alert">
+                <h3>📱 Next Steps</h3>
+                <p><strong>Auto-Resolution:</strong> System will auto-recover if issue is temporary</p>
+                <p><strong>Manual Intervention:</strong> Required if alert persists > 30 minutes</p>
+                <p><strong>Communication:</strong> Stakeholders will be notified if issue affects users</p>
+                <p><strong>Follow-up:</strong> Root cause analysis will be conducted post-resolution</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🤖 Generated by HR Onboarding Performance Monitoring</p>
+            <p>📧 Alert sent to: andrelaurelyvan.kanmegnetabouguie@ynov.com</p>
+            <p>⏰ Next check in 5 minutes</p>
+        </div>
+    </div>
+</body>
+</html>

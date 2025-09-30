@@ -177,6 +177,33 @@ jobs:
         run: terraform apply -auto-approve tfplan
         working-directory: ./terraform
 
+      - name: Setup Application Insights
+        run: |
+          echo "🔍 Setting up Application Insights for ${{ needs.setup.outputs.environment }}"
+          
+          # Create Application Insights instance
+          az monitor app-insights component create \
+            --app hr-onboarding-${{ needs.setup.outputs.environment }}-insights \
+            --location westeurope \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --application-type web \
+            --retention-time 90 \
+            --kind web
+          
+          # Get instrumentation key
+          INSTRUMENTATION_KEY=$(az monitor app-insights component show \
+            --app hr-onboarding-${{ needs.setup.outputs.environment }}-insights \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --query instrumentationKey -o tsv)
+          
+          # Configure API app service with Application Insights
+          az webapp config appsettings set \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --settings APPINSIGHTS_INSTRUMENTATIONKEY="$INSTRUMENTATION_KEY"
+          
+          echo "✅ Application Insights configured"
+
   # Deploy API
   deploy-api:
     needs: [setup, test]

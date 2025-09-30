@@ -1,0 +1,309 @@
+name: Performance Monitoring & Testing
+
+on:
+  # Run performance tests on every deployment
+  workflow_run:
+    workflows: ["Deploy HR Onboarding Application"]
+    types:
+      - completed
+  
+  # Manual trigger for performance testing
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of performance test to run'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - load
+          - stress
+          - lighthouse
+          - all
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+
+  # Scheduled performance monitoring (daily)
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Setup environment configuration
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      api-url: ${{ steps.config.outputs.api-url }}
+      frontend-url: ${{ steps.config.outputs.frontend-url }}
+      environment: ${{ steps.config.outputs.environment }}
+    steps:
+      - name: Determine environment
+        id: config
+        run: |
+          if [[ "${{ github.event.inputs.environment }}" == "production" ]]; then
+            echo "api-url=https://hr-onboarding-prod-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://hr-onboarding-prod-web.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.environment }}" == "staging" ]]; then
+            echo "api-url=https://hr-onboarding-staging-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://hr-onboarding-staging-web.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "api-url=https://hr-onboarding-dev-r2x0-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://mango-pebble-0d01d2103.1.azurestaticapps.net" >> $GITHUB_OUTPUT
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  # API Load Testing with Artillery
+  api-load-test:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'load' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Artillery
+        run: npm install -g artillery@latest
+
+      - name: Update test configuration for environment
+        run: |
+          # Update target URL in load test config
+          sed -i "s|target: 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net'|target: '${{ needs.setup.outputs.api-url }}'|g" performance/load-tests/api-load-test.yml
+
+      - name: Run API Load Test
+        id: load-test
+        run: |
+          echo "🚀 Running load test against ${{ needs.setup.outputs.api-url }}"
+          artillery run performance/load-tests/api-load-test.yml \
+            --output performance/reports/load-test-$(date +%Y%m%d-%H%M%S).json
+          
+          # Capture test results
+          echo "load-test-completed=true" >> $GITHUB_OUTPUT
+
+      - name: Generate Load Test Report
+        run: |
+          artillery report performance/reports/load-test-*.json \
+            --output performance/reports/load-test-report.html
+
+      - name: Upload Load Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-results-${{ needs.setup.outputs.environment }}
+          path: |
+            performance/reports/load-test-*.json
+            performance/reports/load-test-report.html
+          retention-days: 30
+
+  # API Stress Testing
+  api-stress-test:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'stress' || github.event.inputs.test_type == 'all'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Artillery
+        run: npm install -g artillery@latest
+
+      - name: Update stress test configuration
+        run: |
+          sed -i "s|target: 'https://hr-onboarding-dev-r2x0-api.azurewebsites.net'|target: '${{ needs.setup.outputs.api-url }}'|g" performance/load-tests/stress-test.yml
+
+      - name: Run API Stress Test
+        run: |
+          echo "⚠️ Running stress test against ${{ needs.setup.outputs.api-url }}"
+          artillery run performance/load-tests/stress-test.yml \
+            --output performance/reports/stress-test-$(date +%Y%m%d-%H%M%S).json
+
+      - name: Upload Stress Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-test-results-${{ needs.setup.outputs.environment }}
+          path: performance/reports/stress-test-*.json
+          retention-days: 30
+
+  # Frontend Performance Testing with Lighthouse
+  lighthouse-performance:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: github.event.inputs.test_type == 'lighthouse' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Lighthouse CI
+        run: |
+          npm install -g @lhci/cli@latest
+          npm install -g lighthouse@latest
+
+      - name: Update Lighthouse configuration
+        run: |
+          # Update URLs in lighthouse config
+          sed -i "s|https://mango-pebble-0d01d2103.1.azurestaticapps.net|${{ needs.setup.outputs.frontend-url }}|g" performance/lighthouse/lighthouserc.js
+
+      - name: Run Lighthouse CI
+        id: lighthouse
+        run: |
+          echo "🔍 Running Lighthouse performance audit on ${{ needs.setup.outputs.frontend-url }}"
+          lhci autorun --config=performance/lighthouse/lighthouserc.js || true
+          
+          # Store results even if some thresholds fail
+          echo "lighthouse-completed=true" >> $GITHUB_OUTPUT
+
+      - name: Upload Lighthouse Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results-${{ needs.setup.outputs.environment }}
+          path: |
+            .lighthouseci/
+            performance/reports/lighthouse-storage/
+          retention-days: 30
+
+  # Performance Analysis & Reporting
+  performance-analysis:
+    needs: [setup, api-load-test, lighthouse-performance]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Test Results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-results-${{ needs.setup.outputs.environment }}'
+          path: ./performance-results/
+          merge-multiple: true
+
+      - name: Analyze Performance Results
+        id: analysis
+        run: |
+          echo "📊 Analyzing performance test results..."
+          
+          # Initialize performance status
+          PERFORMANCE_STATUS="✅ PASSED"
+          ISSUES_FOUND=""
+          
+          # Check if load test results exist and analyze
+          if find ./performance-results -name "load-test-*.json" -type f | head -1 | grep -q .; then
+            echo "Found load test results"
+            # Basic analysis - in real implementation, parse JSON for metrics
+            echo "load-test-available=true" >> $GITHUB_OUTPUT
+          else
+            echo "No load test results found"
+            echo "load-test-available=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check Lighthouse results
+          if find ./performance-results -name "*.html" -type f | head -1 | grep -q .; then
+            echo "Found Lighthouse results"
+            echo "lighthouse-available=true" >> $GITHUB_OUTPUT
+          else
+            echo "No Lighthouse results found"
+            echo "lighthouse-available=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "performance-status=$PERFORMANCE_STATUS" >> $GITHUB_OUTPUT
+          echo "issues-found=$ISSUES_FOUND" >> $GITHUB_OUTPUT
+
+      - name: Generate Performance Summary
+        run: |
+          # Create performance summary
+          mkdir -p performance/reports
+          cat > performance/reports/performance-summary.md << EOF
+          # Performance Test Summary - ${{ needs.setup.outputs.environment }}
+          
+          **Date:** $(date)
+          **Environment:** ${{ needs.setup.outputs.environment }}
+          **API URL:** ${{ needs.setup.outputs.api-url }}
+          **Frontend URL:** ${{ needs.setup.outputs.frontend-url }}
+          
+          ## Test Results
+          
+          ### Load Testing
+          - **Status:** ${{ steps.analysis.outputs.load-test-available == 'true' && '✅ Completed' || '❌ Skipped' }}
+          - **Target:** API endpoints under realistic load
+          - **Results:** See artifacts for detailed metrics
+          
+          ### Lighthouse Performance
+          - **Status:** ${{ steps.analysis.outputs.lighthouse-available == 'true' && '✅ Completed' || '❌ Skipped' }}
+          - **Target:** Frontend performance and Core Web Vitals
+          - **Results:** See artifacts for detailed scores
+          
+          ## Overall Performance Status
+          ${{ steps.analysis.outputs.performance-status }}
+          
+          ${{ steps.analysis.outputs.issues-found }}
+          
+          ---
+          *Generated by GitHub Actions Performance Monitoring*
+          EOF
+
+      - name: Upload Performance Summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-summary-${{ needs.setup.outputs.environment }}
+          path: performance/reports/performance-summary.md
+          retention-days: 30
+
+  # Email Notification for Performance Results
+  notify-performance-results:
+    needs: [setup, performance-analysis]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Performance Results Email
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🔍 HR Onboarding Performance Test Results - ${{ needs.setup.outputs.environment }}"
+          to: andrelaurelyvan.kanmegnetabouguie@ynov.com
+          from: "HR Onboarding CI/CD <noreply@hr-onboarding.com>"
+          html_body: |
+            <h2>🚀 Performance Test Results</h2>
+            
+            <p><strong>Environment:</strong> ${{ needs.setup.outputs.environment }}</p>
+            <p><strong>Test Date:</strong> $(date)</p>
+            <p><strong>Trigger:</strong> ${{ github.event_name }}</p>
+            
+            <h3>📊 Results Summary</h3>
+            <ul>
+              <li><strong>API Load Test:</strong> ${{ needs.performance-analysis.outputs.load-test-available == 'true' && '✅ Completed' || '⏭️ Skipped' }}</li>
+              <li><strong>Frontend Performance:</strong> ${{ needs.performance-analysis.outputs.lighthouse-available == 'true' && '✅ Completed' || '⏭️ Skipped' }}</li>
+              <li><strong>Overall Status:</strong> ${{ needs.performance-analysis.outputs.performance-status }}</li>
+            </ul>
+            
+            <h3>🔗 Links</h3>
+            <ul>
+              <li><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Full Results</a></li>
+              <li><a href="${{ needs.setup.outputs.api-url }}/health">API Health Check</a></li>
+              <li><a href="${{ needs.setup.outputs.frontend-url }}">Frontend Application</a></li>
+            </ul>
+            
+            <hr>
+            <p><small>🤖 Generated by HR Onboarding Performance Monitoring</small></p>

@@ -1,0 +1,67 @@
+{
+  "applicationInsights": {
+    "name": "hr-onboarding-insights",
+    "location": "westeurope",
+    "kind": "web",
+    "applicationType": "web",
+    "retentionInDays": 90,
+    "samplingPercentage": 100,
+    "disableIpMasking": false
+  },
+  "customMetrics": [
+    {
+      "name": "checklist_generation_requests",
+      "description": "Number of checklist generation requests",
+      "unit": "Count"
+    },
+    {
+      "name": "checklist_generation_duration",
+      "description": "Time taken to generate checklists",
+      "unit": "Milliseconds"
+    },
+    {
+      "name": "openai_api_calls",
+      "description": "Number of OpenAI API calls made",
+      "unit": "Count"
+    },
+    {
+      "name": "openai_api_cost",
+      "description": "Estimated cost of OpenAI API calls",
+      "unit": "Currency"
+    },
+    {
+      "name": "share_link_generations",
+      "description": "Number of share links generated",
+      "unit": "Count"
+    },
+    {
+      "name": "shared_checklist_views",
+      "description": "Number of shared checklist views",
+      "unit": "Count"
+    }
+  ],
+  "customDimensions": [
+    {
+      "name": "role",
+      "description": "Employee role for checklist generation"
+    },
+    {
+      "name": "department", 
+      "description": "Department for checklist generation"
+    },
+    {
+      "name": "environment",
+      "description": "Deployment environment (dev/staging/production)"
+    },
+    {
+      "name": "api_version",
+      "description": "API version used"
+    }
+  ],
+  "logAnalyticsWorkspace": {
+    "name": "hr-onboarding-logs",
+    "location": "westeurope",
+    "sku": "PerGB2018",
+    "retentionInDays": 30
+  }
+}
