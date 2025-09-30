@@ -14,12 +14,12 @@ const validateRequired = (fields, body) => {
 };
 
 // Format error response
-const errorResponse = (message) => {
+const errorResponse = message => {
   return { error: message };
 };
 
 // Format success response
-const successResponse = (data) => {
+const successResponse = data => {
   return data;
 };
 
@@ -27,5 +27,5 @@ module.exports = {
   generateSlug,
   validateRequired,
   errorResponse,
-  successResponse
+  successResponse,
 };

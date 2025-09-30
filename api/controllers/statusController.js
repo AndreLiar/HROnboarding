@@ -37,9 +37,9 @@ class StatusController {
       message: 'HR Onboarding API is running',
       timestamp: new Date().toISOString(),
       port: PORT,
-      env: process.env.NODE_ENV || 'development'
+      env: process.env.NODE_ENV || 'development',
     });
-    
+
     res.json(response);
   }
 }

@@ -46,7 +46,7 @@ class HealthController {
       res.status(500).json({
         status: 'ERROR',
         timestamp: new Date().toISOString(),
-        error: 'Health check failed'
+        error: 'Health check failed',
       });
     }
   }

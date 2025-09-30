@@ -13,10 +13,10 @@ class ChecklistService {
           model: 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt }
+            { role: 'user', content: userPrompt },
           ],
           max_tokens: 1000,
-          temperature: 0.7
+          temperature: 0.7,
         });
 
         const checklistText = completion.choices[0].message.content.trim();
@@ -35,7 +35,7 @@ class ChecklistService {
     return {
       checklist,
       role,
-      department
+      department,
     };
   }
 }

@@ -1,14 +1,6 @@
-import React, { useState } from 'react'
-import {
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Grid,
-  Paper
-} from '@mui/material'
-import { Psychology } from '@mui/icons-material'
+import React, { useState } from 'react';
+import { FormControl, InputLabel, Select, MenuItem, Button, Grid, Paper } from '@mui/material';
+import { Psychology } from '@mui/icons-material';
 
 const ROLES = [
   'Développeur Junior',
@@ -24,8 +16,8 @@ const ROLES = [
   'Designer UI/UX',
   'Administrateur Système',
   'Data Analyst',
-  'Chef de Produit'
-]
+  'Chef de Produit',
+];
 
 const DEPARTMENTS = [
   'Informatique',
@@ -35,20 +27,20 @@ const DEPARTMENTS = [
   'Marketing',
   'Operations',
   'Juridique',
-  'Direction Générale'
-]
+  'Direction Générale',
+];
 
 function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '' }) {
-  const [role, setRole] = useState(initialRole)
-  const [department, setDepartment] = useState(initialDepartment)
+  const [role, setRole] = useState(initialRole);
+  const [department, setDepartment] = useState(initialDepartment);
 
   const handleGenerate = () => {
     if (role && department) {
-      onGenerate(role, department)
+      onGenerate(role, department);
     }
-  }
+  };
 
-  const isDisabled = !role || !department || loading
+  const isDisabled = !role || !department || loading;
 
   return (
     <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
@@ -56,12 +48,8 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
         <Grid item xs={12} md={5}>
           <FormControl fullWidth>
             <InputLabel>Rôle</InputLabel>
-            <Select
-              value={role}
-              label="Rôle"
-              onChange={(e) => setRole(e.target.value)}
-            >
-              {ROLES.map((roleOption) => (
+            <Select value={role} label='Rôle' onChange={e => setRole(e.target.value)}>
+              {ROLES.map(roleOption => (
                 <MenuItem key={roleOption} value={roleOption}>
                   {roleOption}
                 </MenuItem>
@@ -75,10 +63,10 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
             <InputLabel>Département</InputLabel>
             <Select
               value={department}
-              label="Département"
-              onChange={(e) => setDepartment(e.target.value)}
+              label='Département'
+              onChange={e => setDepartment(e.target.value)}
             >
-              {DEPARTMENTS.map((deptOption) => (
+              {DEPARTMENTS.map(deptOption => (
                 <MenuItem key={deptOption} value={deptOption}>
                   {deptOption}
                 </MenuItem>
@@ -89,7 +77,7 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
 
         <Grid item xs={12} md={2}>
           <Button
-            variant="contained"
+            variant='contained'
             fullWidth
             sx={{ height: '56px' }}
             onClick={handleGenerate}
@@ -101,7 +89,7 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
         </Grid>
       </Grid>
     </Paper>
-  )
+  );
 }
 
-export default Selector
+export default Selector;

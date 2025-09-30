@@ -30,19 +30,18 @@ class DatabaseService {
 
   static async saveChecklist(id, slug, checklist, role, department) {
     const checklistJson = JSON.stringify(checklist);
-    
+
     const request = new sql.Request();
     await request
       .input('id', sql.NVarChar, id)
       .input('slug', sql.NVarChar, slug)
       .input('checklist', sql.NVarChar, checklistJson)
       .input('role', sql.NVarChar, role)
-      .input('department', sql.NVarChar, department)
-      .query(`
+      .input('department', sql.NVarChar, department).query(`
         INSERT INTO checklists (id, slug, checklist, role, department)
         VALUES (@id, @slug, @checklist, @role, @department)
       `);
-    
+
     return slug;
   }
 
@@ -61,7 +60,7 @@ class DatabaseService {
       checklist: JSON.parse(item.checklist),
       role: item.role,
       department: item.department,
-      createdAt: item.createdAt
+      createdAt: item.createdAt,
     };
   }
 

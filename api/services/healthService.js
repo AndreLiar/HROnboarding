@@ -9,8 +9,8 @@ class HealthService {
       version: '1.0.0',
       services: {
         database: 'Unknown',
-        openai: openai ? 'Available' : 'Not configured'
-      }
+        openai: openai ? 'Available' : 'Not configured',
+      },
     };
 
     // Test database connection

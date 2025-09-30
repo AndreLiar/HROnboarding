@@ -1,6 +1,11 @@
 const ChecklistService = require('../services/checklistService');
 const DatabaseService = require('../services/databaseService');
-const { validateRequired, generateSlug, errorResponse, successResponse } = require('../utils/helpers');
+const {
+  validateRequired,
+  generateSlug,
+  errorResponse,
+  successResponse,
+} = require('../utils/helpers');
 
 class ChecklistController {
   /**
@@ -55,12 +60,19 @@ class ChecklistController {
       validateRequired(['role', 'department'], req.body);
 
       const result = await ChecklistService.generateChecklist(role, department);
-      
+
       res.json(successResponse(result));
     } catch (error) {
       console.error('Error generating checklist:', error);
-      res.status(error.message.includes('Missing required') ? 400 : 500)
-         .json(errorResponse(error.message.includes('Missing required') ? error.message : 'Failed to generate checklist'));
+      res
+        .status(error.message.includes('Missing required') ? 400 : 500)
+        .json(
+          errorResponse(
+            error.message.includes('Missing required')
+              ? error.message
+              : 'Failed to generate checklist'
+          )
+        );
     }
   }
 
@@ -107,7 +119,7 @@ class ChecklistController {
       }
 
       const slug = generateSlug();
-      
+
       await DatabaseService.saveChecklist(slug, slug, checklist, role, department);
 
       res.json(successResponse({ slug }));

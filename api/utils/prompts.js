@@ -14,5 +14,5 @@ Répondez UNIQUEMENT avec ce format exact:
 [{"étape": "première tâche"}, {"étape": "deuxième tâche"}, {"étape": "troisième tâche"}]`;
 
 module.exports = {
-  SYSTEM_PROMPT
+  SYSTEM_PROMPT,
 };
