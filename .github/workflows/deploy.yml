@@ -219,25 +219,18 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install dependencies
+      - name: Create deployment package (without node_modules)
         run: |
-          echo "📦 Installing production dependencies only"
-          npm ci --omit=dev --no-audit --no-fund
-        working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
-      - name: Create deployment package
-        run: |
-          echo "📦 Creating optimized deployment package"
+          echo "📦 Creating lightweight deployment package"
           
           # Clean up any existing packages
           rm -f ../api-deployment.zip
           
-          # Create deployment package excluding dev dependencies and cache
+          # Create package without node_modules (Azure will install them)
           zip -r ../api-deployment.zip . \
+            -x "node_modules/*" \
             -x "*.log" \
             -x ".env*" \
-            -x "node_modules/.cache/*" \
-            -x "node_modules/.bin/*" \
             -x "*.test.js" \
             -x "*.spec.js" \
             -x ".eslintrc.*" \
@@ -246,7 +239,7 @@ jobs:
           
           # Verify package size
           ls -lh ../api-deployment.zip
-          echo "✅ Deployment package created"
+          echo "✅ Lightweight deployment package created (Azure will handle npm install)"
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Upload API artifacts
@@ -261,8 +254,20 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Start Azure Web App
+      - name: Configure Azure Web App Settings
         run: |
+          echo "⚙️ Configuring Azure Web App for Node.js"
+          
+          # Set Node.js version and npm configuration
+          az webapp config appsettings set \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --settings \
+              WEBSITE_NODE_DEFAULT_VERSION="20.x" \
+              NPM_CONFIG_PRODUCTION="true" \
+              SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
+              ENABLE_ORYX_BUILD="true"
+          
           # Start the web app if it's stopped (common with Free tier)
           az webapp start \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
@@ -278,25 +283,27 @@ jobs:
       
       - name: Verify deployment health
         run: |
-          echo "🔍 Waiting for application startup..."
-          sleep 30
+          echo "🔍 Waiting for Azure to install dependencies and start application..."
+          sleep 60  # Give Azure more time to install npm packages
           
-          # Health check with retries
+          # Health check with retries (extended for npm install time)
           HEALTH_URL="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health"
           
-          for i in {1..6}; do
-            echo "Health check attempt $i/6..."
+          for i in {1..10}; do
+            echo "Health check attempt $i/10..."
             if curl -f -s --max-time 30 "$HEALTH_URL" > /dev/null; then
               echo "✅ Application is healthy!"
               curl -s "$HEALTH_URL" | jq .
               break
             else
-              echo "❌ Health check failed, waiting 30s..."
-              if [ $i -eq 6 ]; then
-                echo "🚨 Deployment health check failed after 6 attempts"
+              echo "❌ Health check failed, waiting 45s for npm install..."
+              if [ $i -eq 10 ]; then
+                echo "🚨 Deployment health check failed after 10 attempts"
+                echo "📋 Checking Azure logs for deployment issues..."
+                az webapp log tail --name ${{ needs.setup.outputs.webapp-name }} --resource-group ${{ needs.setup.outputs.resource-group }} || true
                 exit 1
               fi
-              sleep 30
+              sleep 45
             fi
           done
 
