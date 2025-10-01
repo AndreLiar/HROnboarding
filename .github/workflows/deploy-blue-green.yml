@@ -305,7 +305,7 @@ jobs:
         run: |
           echo "🔵 Deploying Blue version to App Service"
           
-          # Configure blue environment variables with application settings
+          # Configure blue environment variables with application settings (using GitHub Secrets)
           az webapp config appsettings set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
@@ -315,10 +315,10 @@ jobs:
               DEPLOYMENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
               ACTIVE_VERSION="blue" \
               NODE_ENV="production" \
-              DATABASE_SERVER="hr-onboarding-${{ needs.version-and-setup.outputs.environment }}-r2x0-sql.database.windows.net" \
-              DATABASE_NAME="hr-onboarding" \
-              DATABASE_USERNAME="sqladmin" \
-              DATABASE_PASSWORD="HROnboarding2024!" \
+              DATABASE_SERVER="${{ secrets.DATABASE_SERVER }}" \
+              DATABASE_NAME="${{ secrets.DATABASE_NAME }}" \
+              DATABASE_USERNAME="${{ secrets.DATABASE_USERNAME }}" \
+              DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
               DATABASE_TYPE="mssql" \
               OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
               OPENAI_API_ENDPOINT="https://api.openai.com/v1" \
