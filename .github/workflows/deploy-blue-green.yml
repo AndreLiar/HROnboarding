@@ -555,11 +555,11 @@ jobs:
         with:
           server_address: smtp.gmail.com
           server_port: 587
-          username: kanmegnea@gmail.com
-          password: "ryvk nzgm hrsw wewo"
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "🚨 EMERGENCY ROLLBACK - HR Onboarding ${{ needs.version-and-setup.outputs.environment }}"
           to: andrelaurelyvan.kanmegnetabouguie@ynov.com
-          from: "kanmegnea@gmail.com"
+          from: ${{ secrets.EMAIL_USERNAME }}
           html_body: |
             <h2>🚨 Emergency Rollback Executed</h2>
             
