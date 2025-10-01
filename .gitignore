@@ -70,3 +70,6 @@ azure-credentials.json
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Claude Code documentation (local only)
+CLAUDE.md

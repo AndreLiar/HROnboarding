@@ -186,23 +186,41 @@ Vérification de l'état des services (base de données, OpenAI).
 
 ## 🔄 CI/CD Pipeline
 
+### Phase 4: Infrastructure Improvements ✅ (Current)
+**Zero-Cost Enterprise Infrastructure** avec fonctionnalités avancées:
+- ✅ **GitHub-based Terraform State** - Gestion d'état chiffrée sans coûts Azure Storage
+- ✅ **Blue/Green Deployment** - Déploiements sans interruption via conteneurs
+- ✅ **Infrastructure Testing** - Scanning de sécurité (Checkov/tfsec) et validation
+- ✅ **Comprehensive Health Checks** - Validation complète des déploiements
+- ✅ **Cost Optimization** - Économies de $67-135/mois avec fonctionnalités enterprise
+- ✅ **Automated Rollback** - Récupération en <30 secondes sur échec
+
+### Phase 3: Advanced Monitoring ✅
+- ✅ **Performance Testing** - Artillery load testing automatisé
+- ✅ **Lighthouse CI** - Optimisation performance frontend
+- ✅ **Application Insights** - Monitoring temps réel avec métriques custom
+- ✅ **Email Notifications** - Alertes automatiques sur problèmes
+
 ### Phase 2: Release Management ✅
-GitHub Actions automatise maintenant:
 - ✅ **Semantic Versioning** - Versioning automatique basé sur les commits
 - ✅ **Release Notes** - Génération automatique des notes de version
 - ✅ **Manual Approval** - Approbation manuelle pour la production
 - ✅ **Artifact Storage** - Stockage des packages de déploiement (30 jours)
 - ✅ **Rollback Capability** - Rollback en un clic vers versions précédentes
-- ✅ Tests et qualité (ESLint, Prettier, npm audit)
-- ✅ Déploiement infrastructure (Terraform)
-- ✅ Déploiement API (App Service)
-- ✅ Déploiement frontend (Static Web Apps)
-- ✅ Health checks post-déploiement
+
+### 🛠️ Infrastructure Workflows (7 spécialisés)
+1. **Blue/Green Deployment** - Déploiements sans interruption
+2. **Infrastructure Testing** - Validation sécurité et coûts
+3. **State Management** - Gestion état Terraform chiffrée
+4. **Performance Monitoring** - Tests charge et optimisation
+5. **Release Management** - Versioning et artifact storage
+6. **Emergency Rollback** - Récupération rapide sur incident
+7. **PR Validation** - Quality gates sur pull requests
 
 ### Environments
-- **Production** (`main`): Approbation manuelle requise
-- **Staging** (`staging`): Déploiement automatique
-- **Development** (`dev`): Déploiement immédiat
+- **Production** (`main`): Approbation manuelle + blue/green deployment
+- **Staging** (`staging`): Déploiement automatique avec health checks
+- **Development** (`dev`): Déploiement immédiat avec validation
 
 📖 **Documentation complète:** [docs/](./docs/)
 
