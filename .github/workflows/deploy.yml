@@ -222,7 +222,7 @@ jobs:
       - name: Install dependencies
         run: |
           echo "📦 Installing production dependencies only"
-          npm ci --only=production
+          npm ci --omit=dev --no-audit --no-fund
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Create deployment package
