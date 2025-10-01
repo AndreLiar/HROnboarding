@@ -30,28 +30,8 @@ env:
   TERRAFORM_VERSION: '1.5.0'
 
 jobs:
-  # Setup and validation
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      environment: ${{ steps.env.outputs.environment }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Determine environment
-        id: env
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
-            echo "environment=staging" >> $GITHUB_OUTPUT
-          else
-            echo "environment=dev" >> $GITHUB_OUTPUT
-          fi
-
   # Terraform validation and linting
   terraform-validate:
-    needs: setup
     runs-on: ubuntu-latest
     if: github.event.inputs.test_type == 'validate' || github.event.inputs.test_type == 'all' || github.event.inputs.test_type == ''
     steps:
@@ -71,7 +51,8 @@ jobs:
       - name: Terraform Init
         run: |
           echo "🚀 Initializing Terraform"
-          terraform init -backend=false
+          # Use local backend for testing
+          terraform init -backend-config="path=.terraform/terraform.tfstate"
         working-directory: ./terraform
 
       - name: Terraform Validate
@@ -84,7 +65,7 @@ jobs:
         run: |
           echo "📋 Creating Terraform plan for validation"
           terraform plan \
-            -var-file="environments/${{ needs.setup.outputs.environment }}.tfvars" \
+            -var-file="environments/dev.tfvars" \
             -var="openai_api_key=dummy_key_for_validation" \
             -out=tfplan
         working-directory: ./terraform
@@ -92,7 +73,7 @@ jobs:
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
-          name: terraform-plan-${{ needs.setup.outputs.environment }}
+          name: terraform-plan-dev
           path: terraform/tfplan
           retention-days: 7
 
@@ -158,7 +139,7 @@ jobs:
           ## Summary
           - **Scan Date:** $(date)
           - **Terraform Version:** ${{ env.TERRAFORM_VERSION }}
-          - **Environment:** ${{ needs.setup.outputs.environment }}
+          - **Environment:** dev
           - **Status:** $(if [[ -f security-results.json ]] && [[ -f tfsec-results.json ]]; then echo "✅ Completed"; else echo "⚠️ Partial"; fi)
           EOF
 
@@ -193,7 +174,8 @@ jobs:
       - name: Terraform Init for Infracost
         run: |
           echo "🚀 Initializing Terraform for cost analysis"
-          terraform init -backend=false
+          # Use local backend for cost analysis
+          terraform init -backend-config="path=.terraform/terraform.tfstate"
         working-directory: ./terraform
 
       - name: Generate Infracost Baseline
@@ -203,7 +185,7 @@ jobs:
           # For private repos, it has a free tier with limited usage
           infracost breakdown \
             --path=terraform/ \
-            --terraform-var-file="terraform/environments/${{ needs.setup.outputs.environment }}.tfvars" \
+            --terraform-var-file="terraform/environments/dev.tfvars" \
             --terraform-var="openai_api_key=dummy_key_for_cost_analysis" \
             --format=json \
             --out-file=cost-baseline.json || true
@@ -217,7 +199,7 @@ jobs:
           # Infrastructure Cost Estimation
           
           ## Environment
-          - **Target:** ${{ needs.setup.outputs.environment }}
+          - **Target:** dev
           - **Analysis Date:** $(date)
           - **Currency:** USD
           
@@ -242,7 +224,7 @@ jobs:
       - name: Upload Cost Analysis
         uses: actions/upload-artifact@v4
         with:
-          name: cost-analysis-${{ needs.setup.outputs.environment }}
+          name: cost-analysis-dev
           path: |
             cost-baseline.json
             cost-summary.md
@@ -412,7 +394,7 @@ jobs:
 
   # Generate comprehensive test summary
   test-summary:
-    needs: [setup, terraform-validate, security-scan, cost-estimation, compliance-check, performance-check]
+    needs: [terraform-validate, security-scan, cost-estimation, compliance-check, performance-check]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -456,7 +438,7 @@ jobs:
           | Performance Analysis | ${PERFORMANCE_STATUS} | $([ "$PERFORMANCE_STATUS" == "success" ] && echo "✅ Passed" || echo "❌ Failed") |
           
           ## Environment
-          - **Target Environment:** ${{ needs.setup.outputs.environment }}
+          - **Target Environment:** ${{ github.ref == 'refs/heads/main' && 'production' || github.ref == 'refs/heads/staging' && 'staging' || 'dev' }}
           - **Test Date:** $(date)
           - **Terraform Version:** ${{ env.TERRAFORM_VERSION }}
           - **Triggered By:** ${{ github.actor }}

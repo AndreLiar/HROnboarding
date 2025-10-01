@@ -152,7 +152,10 @@ jobs:
           terraform_version: 1.5.0
 
       - name: Terraform Init
-        run: terraform init
+        run: |
+          echo "🚀 Initializing Terraform"
+          # Use local backend for deployment
+          terraform init -backend-config="path=.terraform/terraform.tfstate"
         working-directory: ./terraform
 
       - name: Terraform Plan
