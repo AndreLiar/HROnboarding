@@ -550,17 +550,16 @@ jobs:
           echo "✅ Emergency rollback completed"
           echo "🟢 Service restored to Green environment"
 
-      - name: Create rollback notification issue
-        if: false  # Temporarily disabled due to email auth issues
+      - name: Send rollback notification
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
           server_port: 587
-          username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORD }}
+          username: kanmegnea@gmail.com
+          password: "ryvk nzgm hrsw wewo"
           subject: "🚨 EMERGENCY ROLLBACK - HR Onboarding ${{ needs.version-and-setup.outputs.environment }}"
           to: andrelaurelyvan.kanmegnetabouguie@ynov.com
-          from: "HR Onboarding CI/CD <noreply@hr-onboarding.com>"
+          from: "kanmegnea@gmail.com"
           html_body: |
             <h2>🚨 Emergency Rollback Executed</h2>
             
