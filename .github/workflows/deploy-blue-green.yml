@@ -550,7 +550,8 @@ jobs:
           echo "✅ Emergency rollback completed"
           echo "🟢 Service restored to Green environment"
 
-      - name: Send rollback notification
+      - name: Create rollback notification issue
+        if: false  # Temporarily disabled due to email auth issues
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
