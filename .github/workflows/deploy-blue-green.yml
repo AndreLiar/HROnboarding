@@ -1,5 +1,10 @@
 name: Blue/Green Deployment with Zero Cost Strategy
 
+# Prevent concurrent deployments to avoid conflicts
+concurrency:
+  group: deployment-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   push:
     branches:
@@ -259,6 +264,43 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Check for ongoing deployments
+        run: |
+          echo "🔍 Checking for ongoing deployments"
+          
+          # Check deployment status
+          DEPLOYMENT_STATUS=$(az webapp deployment list \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --query "[0].status" \
+            --output tsv 2>/dev/null || echo "None")
+          
+          echo "Current deployment status: $DEPLOYMENT_STATUS"
+          
+          # If there's an ongoing deployment, wait for it to complete
+          if [[ "$DEPLOYMENT_STATUS" == "Running" || "$DEPLOYMENT_STATUS" == "Building" ]]; then
+            echo "⏳ Waiting for ongoing deployment to complete..."
+            for i in {1..30}; do
+              sleep 10
+              DEPLOYMENT_STATUS=$(az webapp deployment list \
+                --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+                --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+                --query "[0].status" \
+                --output tsv 2>/dev/null || echo "None")
+              
+              echo "Deployment status check $i/30: $DEPLOYMENT_STATUS"
+              
+              if [[ "$DEPLOYMENT_STATUS" != "Running" && "$DEPLOYMENT_STATUS" != "Building" ]]; then
+                echo "✅ Previous deployment completed"
+                break
+              fi
+              
+              if [[ $i -eq 30 ]]; then
+                echo "⚠️ Timeout waiting for deployment to complete, proceeding anyway"
+              fi
+            done
+          fi
+
       - name: Deploy Blue to Azure App Service
         run: |
           echo "🔵 Deploying Blue version to App Service"
@@ -273,14 +315,28 @@ jobs:
               DEPLOYMENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
               ACTIVE_VERSION="blue" || true
           
-          # Deploy blue package
-          az webapp deploy \
-            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
-            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --src-path ./api-blue-deployment.zip \
-            --type zip
-          
-          echo "✅ Blue deployment completed"
+          # Deploy blue package with retry logic
+          for attempt in {1..3}; do
+            echo "🔄 Deployment attempt $attempt/3"
+            
+            if az webapp deploy \
+              --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+              --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+              --src-path ./api-blue-deployment.zip \
+              --type zip; then
+              echo "✅ Blue deployment completed successfully"
+              break
+            else
+              echo "❌ Deployment attempt $attempt failed"
+              if [[ $attempt -lt 3 ]]; then
+                echo "⏳ Waiting 30 seconds before retry..."
+                sleep 30
+              else
+                echo "🚨 All deployment attempts failed"
+                exit 1
+              fi
+            fi
+          done
 
       - name: Wait for Blue startup
         run: |
