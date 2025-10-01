@@ -1,0 +1,230 @@
+name: Terraform State Management (GitHub Backend)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment (dev/staging/production)'
+        required: true
+        type: string
+      action:
+        description: 'Action (save/restore/backup/validate)'
+        required: true
+        type: string
+      state_file:
+        description: 'Local state file path'
+        required: false
+        type: string
+        default: 'terraform.tfstate'
+    outputs:
+      state_restored:
+        description: 'Whether state was successfully restored'
+        value: ${{ jobs.manage-state.outputs.state_restored }}
+      state_saved:
+        description: 'Whether state was successfully saved'
+        value: ${{ jobs.manage-state.outputs.state_saved }}
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to manage'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      action:
+        description: 'State management action'
+        required: true
+        default: 'validate'
+        type: choice
+        options:
+          - save
+          - restore
+          - backup
+          - validate
+          - list
+
+env:
+  TERRAFORM_VERSION: '1.5.0'
+
+jobs:
+  manage-state:
+    runs-on: ubuntu-latest
+    outputs:
+      state_restored: ${{ steps.restore.outputs.success }}
+      state_saved: ${{ steps.save.outputs.success }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Validate inputs
+        run: |
+          echo "🔍 Validating state management inputs"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Action: ${{ inputs.action }}"
+          echo "State file: ${{ inputs.state_file }}"
+          
+          # Validate environment
+          if [[ ! "${{ inputs.environment }}" =~ ^(dev|staging|production)$ ]]; then
+            echo "❌ Invalid environment: ${{ inputs.environment }}"
+            exit 1
+          fi
+          
+          echo "✅ Inputs validated"
+
+      - name: Setup state encryption
+        run: |
+          echo "🔐 Setting up state encryption"
+          
+          # Make encryption script executable
+          chmod +x .github/scripts/encrypt-state.sh
+          
+          # Verify encryption key is available
+          if [[ -z "${{ secrets.STATE_ENCRYPTION_KEY }}" ]]; then
+            echo "❌ STATE_ENCRYPTION_KEY secret not configured"
+            exit 1
+          fi
+          
+          echo "✅ Encryption setup complete"
+        env:
+          STATE_ENCRYPTION_KEY: ${{ secrets.STATE_ENCRYPTION_KEY }}
+
+      - name: Create state lock
+        if: inputs.action == 'save' || inputs.action == 'restore'
+        run: |
+          echo "🔒 Creating state lock for ${{ inputs.environment }}"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          .github/scripts/encrypt-state.sh lock "${{ inputs.environment }}" "${{ inputs.action }}"
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Backup existing state
+        if: inputs.action == 'save' || inputs.action == 'backup'
+        run: |
+          echo "💾 Creating backup of existing state"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          .github/scripts/encrypt-state.sh backup "${{ inputs.environment }}"
+
+      - name: Restore Terraform state
+        id: restore
+        if: inputs.action == 'restore'
+        run: |
+          echo "📥 Restoring Terraform state for ${{ inputs.environment }}"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          
+          # Check if encrypted state exists
+          if [[ -f ".github/terraform-state/encrypted-states/${{ inputs.environment }}.tfstate.enc" ]]; then
+            # Decrypt state to working directory
+            .github/scripts/encrypt-state.sh decrypt "${{ inputs.environment }}" "${{ inputs.state_file }}"
+            echo "✅ State restored successfully"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ No existing state found for ${{ inputs.environment }}"
+            echo "success=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Save Terraform state
+        id: save
+        if: inputs.action == 'save'
+        run: |
+          echo "📤 Saving Terraform state for ${{ inputs.environment }}"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          
+          # Check if state file exists
+          if [[ -f "${{ inputs.state_file }}" ]]; then
+            # Encrypt and store state
+            .github/scripts/encrypt-state.sh encrypt "${{ inputs.environment }}" "${{ inputs.state_file }}"
+            echo "✅ State saved successfully"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ State file not found: ${{ inputs.state_file }}"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Validate state integrity
+        if: inputs.action == 'validate'
+        run: |
+          echo "🔍 Validating state integrity for ${{ inputs.environment }}"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          .github/scripts/encrypt-state.sh validate "${{ inputs.environment }}"
+
+      - name: List all states
+        if: inputs.action == 'list'
+        run: |
+          echo "📋 Listing all Terraform states"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          .github/scripts/encrypt-state.sh list
+
+      - name: Commit state changes
+        if: inputs.action == 'save' && steps.save.outputs.success == 'true'
+        run: |
+          echo "💾 Committing encrypted state to repository"
+          
+          # Configure git
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add encrypted state files
+          git add .github/terraform-state/
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️ No state changes to commit"
+          else
+            # Commit changes
+            git commit -m "chore: update encrypted terraform state for ${{ inputs.environment }}
+
+Environment: ${{ inputs.environment }}
+Action: ${{ inputs.action }}
+Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+Actor: ${{ github.actor }}
+
+🤖 Generated by Terraform State Management"
+            
+            # Push changes
+            git push
+            echo "✅ State changes committed and pushed"
+          fi
+
+      - name: Release state lock
+        if: always() && (inputs.action == 'save' || inputs.action == 'restore')
+        run: |
+          echo "🔓 Releasing state lock for ${{ inputs.environment }}"
+          
+          export STATE_ENCRYPTION_KEY="${{ secrets.STATE_ENCRYPTION_KEY }}"
+          .github/scripts/encrypt-state.sh unlock "${{ inputs.environment }}" || true
+
+      - name: Generate state summary
+        run: |
+          echo "📊 State Management Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Action:** ${{ inputs.action }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ inputs.action }}" == "restore" ]]; then
+            echo "- **Restore Result:** ${{ steps.restore.outputs.success }}" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ inputs.action }}" == "save" ]]; then
+            echo "- **Save Result:** ${{ steps.save.outputs.success }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🔐 State is encrypted and stored securely in the GitHub repository" >> $GITHUB_STEP_SUMMARY

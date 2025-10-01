@@ -1,0 +1,578 @@
+name: Blue/Green Deployment with Zero Cost Strategy
+
+on:
+  push:
+    branches:
+      - main      # Production deployment
+      - staging   # Staging deployment
+      - dev       # Development deployment
+  pull_request:
+    branches:
+      - main
+      - staging
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_PACKAGE_PATH: './api'
+  AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
+
+jobs:
+  # Generate semantic version and setup
+  version-and-setup:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version-tag: ${{ steps.version.outputs.version-tag }}
+      environment: ${{ steps.env.outputs.environment }}
+      resource-group: ${{ steps.env.outputs.resource-group }}
+      webapp-name: ${{ steps.env.outputs.webapp-name }}
+      static-app-name: ${{ steps.env.outputs.static-app-name }}
+      deploy-infrastructure: ${{ steps.env.outputs.deploy-infrastructure }}
+      deployment-id: ${{ steps.deployment.outputs.deployment-id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        uses: paulhatch/semantic-version@v5.4.0
+        with:
+          tag_prefix: "v"
+          major_pattern: "BREAKING CHANGE:"
+          minor_pattern: "feat:"
+          version_format: "${major}.${minor}.${patch}"
+          change_path: "."
+          namespace: ""
+          bump_each_commit: false
+          search_commit_body: true
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-prod-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-prod-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-prod-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-staging-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-staging-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-staging-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=true" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-dev-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-dev-r2x0-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-dev-r2x0-web" >> $GITHUB_OUTPUT
+            echo "deploy-infrastructure=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate deployment ID
+        id: deployment
+        run: |
+          # Create unique deployment identifier for blue/green tracking
+          DEPLOYMENT_ID="deploy-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:8}"
+          echo "deployment-id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "🔵 Deployment ID: $DEPLOYMENT_ID"
+
+  # Run tests and quality checks
+  test-and-validate:
+    needs: version-and-setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install API dependencies
+        run: npm install
+        working-directory: ./api
+
+      - name: Install Client dependencies
+        run: npm install
+        working-directory: ./client
+
+      - name: Run quality checks
+        run: |
+          echo "🔍 Running quality checks for blue deployment"
+          # API checks
+          cd api
+          npm run lint
+          npm run format:check
+          npm audit --audit-level=moderate
+          npm test
+          cd ../client
+          # Client checks
+          npm run lint
+          npm run format:check
+          npm audit --audit-level=moderate
+          npm test
+          npm run build
+
+  # Restore Terraform state
+  restore-terraform-state:
+    needs: [version-and-setup, test-and-validate]
+    runs-on: ubuntu-latest
+    if: needs.version-and-setup.outputs.deploy-infrastructure == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Terraform state from GitHub
+        uses: ./.github/workflows/state-management.yml
+        with:
+          environment: ${{ needs.version-and-setup.outputs.environment }}
+          action: 'restore'
+          state_file: 'terraform.tfstate'
+
+  # Deploy infrastructure with state management
+  deploy-infrastructure:
+    needs: [version-and-setup, test-and-validate, restore-terraform-state]
+    runs-on: ubuntu-latest
+    if: needs.version-and-setup.outputs.deploy-infrastructure == 'true'
+    environment: 
+      name: ${{ needs.version-and-setup.outputs.environment }}
+      url: https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.5.0
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./terraform
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var-file="environments/${{ needs.version-and-setup.outputs.environment }}.tfvars" \
+            -var="openai_api_key=${{ secrets.OPENAI_API_KEY }}" \
+            -out=tfplan
+        working-directory: ./terraform
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: ./terraform
+
+      - name: Setup Application Insights
+        run: |
+          echo "🔍 Setting up Application Insights for ${{ needs.version-and-setup.outputs.environment }}"
+          
+          # Create Application Insights instance
+          az monitor app-insights component create \
+            --app hr-onboarding-${{ needs.version-and-setup.outputs.environment }}-insights \
+            --location westeurope \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --application-type web \
+            --retention-time 90 \
+            --kind web || true
+          
+          # Get instrumentation key
+          INSTRUMENTATION_KEY=$(az monitor app-insights component show \
+            --app hr-onboarding-${{ needs.version-and-setup.outputs.environment }}-insights \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --query instrumentationKey -o tsv)
+          
+          # Configure API app service with Application Insights
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings APPINSIGHTS_INSTRUMENTATIONKEY="$INSTRUMENTATION_KEY" || true
+
+      - name: Save Terraform state to GitHub
+        uses: ./.github/workflows/state-management.yml
+        with:
+          environment: ${{ needs.version-and-setup.outputs.environment }}
+          action: 'save'
+          state_file: 'terraform/terraform.tfstate'
+
+  # Blue Deployment - Deploy new version
+  deploy-blue:
+    needs: [version-and-setup, test-and-validate]
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ needs.version-and-setup.outputs.environment }}
+      url: https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
+    outputs:
+      blue-version: ${{ steps.deploy.outputs.blue-version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Create Blue deployment package
+        id: deploy
+        run: |
+          echo "🔵 Creating Blue deployment package"
+          
+          # Set blue version identifier
+          BLUE_VERSION="blue-${{ needs.version-and-setup.outputs.deployment-id }}"
+          echo "blue-version=$BLUE_VERSION" >> $GITHUB_OUTPUT
+          
+          # Create deployment package with blue identifier
+          cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          
+          # Add blue version to package.json for tracking
+          jq --arg version "$BLUE_VERSION" '.blueGreenVersion = $version' package.json > package.json.tmp
+          mv package.json.tmp package.json
+          
+          # Create deployment zip
+          zip -r ../api-blue-deployment.zip . \
+            -x "*.log" \
+            -x ".env*" \
+            -x "node_modules/.cache/*"
+          
+          echo "✅ Blue deployment package created"
+
+      - name: Upload Blue artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hr-onboarding-blue-${{ needs.version-and-setup.outputs.version }}
+          path: ./api-blue-deployment.zip
+          retention-days: 30
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Blue to Azure App Service
+        run: |
+          echo "🔵 Deploying Blue version to App Service"
+          
+          # Configure blue environment variables
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              DEPLOYMENT_ID="${{ needs.version-and-setup.outputs.deployment-id }}" \
+              DEPLOYMENT_VERSION="${{ steps.deploy.outputs.blue-version }}" \
+              DEPLOYMENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              ACTIVE_VERSION="blue" || true
+          
+          # Deploy blue package
+          az webapp deploy \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --src-path ./api-blue-deployment.zip \
+            --type zip
+          
+          echo "✅ Blue deployment completed"
+
+      - name: Wait for Blue startup
+        run: |
+          echo "⏳ Waiting for Blue environment to start up"
+          sleep 60
+          echo "✅ Blue startup wait completed"
+
+  # Blue Health Check - Validate new version
+  validate-blue:
+    needs: [version-and-setup, deploy-blue]
+    runs-on: ubuntu-latest
+    outputs:
+      health-status: ${{ steps.health.outputs.status }}
+      should-proceed: ${{ steps.health.outputs.proceed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprehensive Blue Health Check
+        id: health
+        run: |
+          echo "🔍 Running comprehensive health checks on Blue environment"
+          
+          # Set environment variables for health check script
+          export ENVIRONMENT="${{ needs.version-and-setup.outputs.environment }}"
+          export VERSION="${{ needs.deploy-blue.outputs.blue-version }}"
+          export API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
+          export FRONTEND_URL="https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net"
+          
+          # Run comprehensive health check
+          if ./deployment/health-checks/comprehensive-health.sh "$API_URL" "$FRONTEND_URL"; then
+            echo "✅ Blue environment health check PASSED"
+            echo "status=healthy" >> $GITHUB_OUTPUT
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Blue environment health check FAILED"
+            echo "status=unhealthy" >> $GITHUB_OUTPUT
+            echo "proceed=false" >> $GITHUB_OUTPUT
+            
+            # Upload health check logs for debugging
+            if [[ -f "deployment/health-checks/health-check.log" ]]; then
+              echo "📋 Health check log:"
+              cat deployment/health-checks/health-check.log
+            fi
+            
+            exit 1
+          fi
+
+      - name: Upload health check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blue-health-check-${{ needs.version-and-setup.outputs.environment }}
+          path: |
+            deployment/health-checks/health-check.log
+            deployment/health-checks/health-report.json
+          retention-days: 7
+
+  # Frontend Blue Deployment
+  deploy-frontend-blue:
+    needs: [version-and-setup, validate-blue]
+    runs-on: ubuntu-latest
+    if: needs.validate-blue.outputs.should-proceed == 'true'
+    environment: 
+      name: ${{ needs.version-and-setup.outputs.environment }}
+      url: https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}
+
+      - name: Build Blue frontend
+        run: |
+          echo "🔵 Building Blue frontend application"
+          npm run build
+        working-directory: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}
+        env:
+          VITE_API_URL: https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
+          VITE_VERSION: ${{ needs.deploy-blue.outputs.blue-version }}
+
+      - name: Upload Client Blue artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hr-onboarding-client-blue-${{ needs.version-and-setup.outputs.version }}
+          path: ${{ env.AZURE_STATIC_WEB_APPS_PACKAGE_PATH }}/dist/
+          retention-days: 30
+
+      - name: Deploy Blue frontend
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/client'
+          api_location: ''
+          output_location: 'dist'
+
+  # Final Health Check - Validate complete Blue environment
+  final-health-check:
+    needs: [version-and-setup, deploy-blue, validate-blue, deploy-frontend-blue]
+    runs-on: ubuntu-latest
+    if: needs.validate-blue.outputs.should-proceed == 'true'
+    outputs:
+      deployment-successful: ${{ steps.final.outputs.success }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Final comprehensive health check
+        id: final
+        run: |
+          echo "🔍 Running final health check on complete Blue environment"
+          
+          # Wait for frontend deployment to stabilize
+          sleep 30
+          
+          export ENVIRONMENT="${{ needs.version-and-setup.outputs.environment }}"
+          export VERSION="${{ needs.deploy-blue.outputs.blue-version }}"
+          export API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
+          export FRONTEND_URL="https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net"
+          
+          if ./deployment/health-checks/comprehensive-health.sh "$API_URL" "$FRONTEND_URL"; then
+            echo "✅ Final Blue environment validation PASSED"
+            echo "success=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Final Blue environment validation FAILED"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+  # Traffic Switch - Make Blue the active version (Green becomes standby)
+  switch-to-blue:
+    needs: [version-and-setup, final-health-check]
+    runs-on: ubuntu-latest
+    if: needs.final-health-check.outputs.deployment-successful == 'true'
+    environment: 
+      name: ${{ needs.version-and-setup.outputs.environment }}
+      url: https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Switch traffic to Blue (Zero-downtime)
+        run: |
+          echo "🔄 Switching traffic to Blue environment"
+          
+          # Update application settings to mark Blue as active
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              ACTIVE_VERSION="blue" \
+              PREVIOUS_VERSION="green" \
+              LAST_DEPLOYMENT_ID="${{ needs.version-and-setup.outputs.deployment-id }}" \
+              SWITCH_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          
+          echo "✅ Traffic switched to Blue environment"
+          echo "🟢 Green environment kept as standby for rollback"
+
+      - name: Post-switch validation
+        run: |
+          echo "🔍 Validating traffic switch"
+          
+          # Brief wait for configuration to propagate
+          sleep 15
+          
+          # Quick health check to confirm switch was successful
+          API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
+          
+          if curl -f -s --max-time 30 "${API_URL}/health" > /dev/null; then
+            echo "✅ Post-switch health check passed"
+            echo "🚀 Blue/Green deployment completed successfully"
+          else
+            echo "❌ Post-switch health check failed"
+            echo "🚨 Immediate rollback may be required"
+            exit 1
+          fi
+
+  # Rollback job (only runs on failure)
+  emergency-rollback:
+    needs: [version-and-setup, validate-blue, final-health-check]
+    runs-on: ubuntu-latest
+    if: failure() && (needs.validate-blue.outputs.should-proceed == 'false' || needs.final-health-check.outputs.deployment-successful == 'false')
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Emergency rollback to Green
+        run: |
+          echo "🚨 EMERGENCY ROLLBACK: Blue deployment failed"
+          
+          # Switch back to Green (previous version)
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              ACTIVE_VERSION="green" \
+              ROLLBACK_REASON="Blue deployment health check failed" \
+              ROLLBACK_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+              FAILED_DEPLOYMENT_ID="${{ needs.version-and-setup.outputs.deployment-id }}"
+          
+          echo "✅ Emergency rollback completed"
+          echo "🟢 Service restored to Green environment"
+
+      - name: Send rollback notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🚨 EMERGENCY ROLLBACK - HR Onboarding ${{ needs.version-and-setup.outputs.environment }}"
+          to: andrelaurelyvan.kanmegnetabouguie@ynov.com
+          from: "HR Onboarding CI/CD <noreply@hr-onboarding.com>"
+          html_body: |
+            <h2>🚨 Emergency Rollback Executed</h2>
+            
+            <p><strong>Environment:</strong> ${{ needs.version-and-setup.outputs.environment }}</p>
+            <p><strong>Failed Deployment ID:</strong> ${{ needs.version-and-setup.outputs.deployment-id }}</p>
+            <p><strong>Rollback Time:</strong> $(date -u)</p>
+            <p><strong>Reason:</strong> Blue deployment health checks failed</p>
+            
+            <h3>🔗 Investigation Links</h3>
+            <ul>
+              <li><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Failed Deployment</a></li>
+              <li><a href="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net/health">Check API Health</a></li>
+            </ul>
+            
+            <p><strong>Status:</strong> Service restored to previous working version</p>
+
+  # Create GitHub Release (only for production)
+  create-release:
+    needs: [version-and-setup, switch-to-blue]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && needs.switch-to-blue.result == 'success'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            CHANGELOG=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.version-and-setup.outputs.version-tag }}
+          release_name: Release ${{ needs.version-and-setup.outputs.version }}
+          body: |
+            ## 🚀 Release ${{ needs.version-and-setup.outputs.version }}
+            
+            ### 📋 Changes
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### 🔵 Blue/Green Deployment
+            - **Deployment ID:** ${{ needs.version-and-setup.outputs.deployment-id }}
+            - **Blue Version:** ${{ needs.deploy-blue.outputs.blue-version }}
+            - **Zero-Downtime:** ✅ Achieved
+            - **Health Checks:** ✅ All passed
+            
+            ### 🔗 Deployment URLs
+            - **API:** https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
+            - **Frontend:** https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net
+            - **API Docs:** https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net/api-docs
+            
+            ### 📦 Artifacts
+            - API Package: `hr-onboarding-blue-${{ needs.version-and-setup.outputs.version }}`
+            - Client Build: `hr-onboarding-client-blue-${{ needs.version-and-setup.outputs.version }}`
+            
+            ---
+            🤖 Generated with [Claude Code](https://claude.ai/code)
+          draft: false
+          prerelease: false

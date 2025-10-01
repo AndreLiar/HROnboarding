@@ -1,0 +1,198 @@
+# Zero-Cost Blue/Green Deployment Strategy
+# Simulates deployment slots using container deployment and health checks
+
+strategy:
+  name: "Container-Based Blue/Green"
+  cost: "FREE"
+  description: "Simulate blue/green deployments without requiring paid App Service plans"
+  
+  phases:
+    - name: "Blue Deployment"
+      description: "Deploy new version alongside existing"
+      duration: "3-5 minutes"
+      
+    - name: "Health Validation"
+      description: "Comprehensive health checks on blue environment"
+      duration: "2-3 minutes"
+      
+    - name: "Traffic Switch"
+      description: "Switch traffic to blue environment"
+      duration: "30 seconds"
+      
+    - name: "Green Cleanup"
+      description: "Keep previous version for rollback"
+      duration: "1 minute"
+
+deployment_flow:
+  1_prepare:
+    description: "Prepare deployment artifacts"
+    actions:
+      - "Build application container"
+      - "Create deployment package"
+      - "Generate unique deployment ID"
+      - "Backup current configuration"
+    
+  2_deploy_blue:
+    description: "Deploy to blue environment"
+    actions:
+      - "Deploy new version with blue identifier"
+      - "Configure blue environment variables"
+      - "Start blue application instances"
+      - "Wait for blue startup completion"
+    
+  3_health_check:
+    description: "Validate blue environment health"
+    checks:
+      - "API endpoint responsiveness"
+      - "Database connectivity"
+      - "OpenAI API integration"
+      - "Frontend application loading"
+      - "End-to-end functionality"
+    thresholds:
+      response_time: "< 5 seconds"
+      success_rate: "> 95%"
+      error_rate: "< 5%"
+    
+  4_traffic_switch:
+    description: "Switch traffic to blue"
+    method: "Configuration Update"
+    actions:
+      - "Update ACTIVE_VERSION environment variable"
+      - "Restart application with new config"
+      - "Verify traffic routing"
+    rollback_time: "< 30 seconds"
+    
+  5_monitor:
+    description: "Monitor blue environment"
+    duration: "15 minutes"
+    metrics:
+      - "Response times"
+      - "Error rates" 
+      - "User sessions"
+      - "Resource utilization"
+    
+  6_cleanup:
+    description: "Cleanup green environment"
+    actions:
+      - "Mark green as standby"
+      - "Reduce green resources"
+      - "Update deployment records"
+      - "Archive green logs"
+
+health_checks:
+  api_health:
+    endpoint: "/health"
+    method: "GET"
+    expected_status: 200
+    timeout: 10
+    retries: 3
+    
+  database_check:
+    type: "connection_test"
+    timeout: 15
+    query: "SELECT 1"
+    
+  openai_integration:
+    type: "api_test"
+    endpoint: "/generate"
+    payload: |
+      {
+        "role": "Test Role",
+        "department": "Test Department"
+      }
+    expected_format: "json_array"
+    
+  frontend_check:
+    endpoint: "/"
+    method: "GET"
+    expected_status: 200
+    content_check: "React App"
+    
+  end_to_end:
+    type: "integration_test"
+    steps:
+      - "Load homepage"
+      - "Select role and department"
+      - "Generate checklist"
+      - "Verify response format"
+      - "Test sharing functionality"
+
+rollback_strategy:
+  trigger_conditions:
+    - "Health check failure"
+    - "Error rate > 10%"
+    - "Response time > 10s"
+    - "Manual intervention"
+    
+  rollback_process:
+    1_immediate:
+      - "Switch ACTIVE_VERSION back to green"
+      - "Restart application"
+      - "Verify green environment"
+      
+    2_validation:
+      - "Run health checks on green"
+      - "Monitor error rates"
+      - "Validate user traffic"
+      
+    3_cleanup:
+      - "Stop blue environment"
+      - "Archive blue logs"
+      - "Update deployment status"
+      
+    4_notification:
+      - "Send rollback notification email"
+      - "Update deployment dashboard"
+      - "Create incident record"
+
+monitoring:
+  real_time_metrics:
+    - "Active version identifier"
+    - "Request distribution"
+    - "Response times per version"
+    - "Error rates per version"
+    
+  alerting:
+    - "Blue deployment failures"
+    - "Health check failures"
+    - "Performance degradation"
+    - "Rollback triggers"
+    
+  dashboards:
+    - "Deployment status"
+    - "Version comparison"
+    - "Traffic distribution"
+    - "Performance metrics"
+
+cost_analysis:
+  infrastructure_cost: "$0"
+  additional_resources: "None"
+  time_overhead: "2-3 minutes per deployment"
+  maintenance_effort: "Low"
+  
+benefits:
+  - "Zero additional Azure costs"
+  - "Near-zero downtime deployments"
+  - "Instant rollback capability"
+  - "Comprehensive health validation"
+  - "Risk mitigation through testing"
+  - "Production traffic protection"
+
+limitations:
+  - "Not true parallel environments"
+  - "Brief restart during switch"
+  - "Single App Service plan dependency"
+  - "Manual coordination required"
+
+success_criteria:
+  deployment_success:
+    - "All health checks pass"
+    - "Response time < 5s"
+    - "Error rate < 1%"
+    - "User traffic maintained"
+    
+  rollback_success:
+    - "Service restored < 1 minute"
+    - "Previous version functional"
+    - "No data loss"
+    - "User sessions preserved"
