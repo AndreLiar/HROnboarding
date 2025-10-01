@@ -220,15 +220,33 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          echo "📦 Installing production dependencies only"
+          npm ci --only=production
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Create deployment package
         run: |
-          # Include node_modules in deployment for Azure Free tier
+          echo "📦 Creating optimized deployment package"
+          
+          # Clean up any existing packages
+          rm -f ../api-deployment.zip
+          
+          # Create deployment package excluding dev dependencies and cache
           zip -r ../api-deployment.zip . \
             -x "*.log" \
-            -x ".env*"
+            -x ".env*" \
+            -x "node_modules/.cache/*" \
+            -x "node_modules/.bin/*" \
+            -x "*.test.js" \
+            -x "*.spec.js" \
+            -x ".eslintrc.*" \
+            -x ".prettierrc.*" \
+            -x "nodemon.json"
+          
+          # Verify package size
+          ls -lh ../api-deployment.zip
+          echo "✅ Deployment package created"
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Upload API artifacts
@@ -256,6 +274,31 @@ jobs:
           app-name: ${{ needs.setup.outputs.webapp-name }}
           package: ./api-deployment.zip
           startup-command: 'npm start'
+        timeout-minutes: 10
+      
+      - name: Verify deployment health
+        run: |
+          echo "🔍 Waiting for application startup..."
+          sleep 30
+          
+          # Health check with retries
+          HEALTH_URL="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health"
+          
+          for i in {1..6}; do
+            echo "Health check attempt $i/6..."
+            if curl -f -s --max-time 30 "$HEALTH_URL" > /dev/null; then
+              echo "✅ Application is healthy!"
+              curl -s "$HEALTH_URL" | jq .
+              break
+            else
+              echo "❌ Health check failed, waiting 30s..."
+              if [ $i -eq 6 ]; then
+                echo "🚨 Deployment health check failed after 6 attempts"
+                exit 1
+              fi
+              sleep 30
+            fi
+          done
 
   # Deploy Frontend
   deploy-frontend:
