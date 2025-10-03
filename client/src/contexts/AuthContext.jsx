@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          
+
           // Verify token in background (non-blocking)
           setTimeout(async () => {
             try {
@@ -55,7 +55,6 @@ export const AuthProvider = ({ children }) => {
               setUser(null);
             }
           }, 100);
-          
         } catch (error) {
           // Invalid stored data, clear storage
           localStorage.removeItem('token');
@@ -73,13 +72,17 @@ export const AuthProvider = ({ children }) => {
     try {
       // Set loading state immediately for better UX
       setLoading(true);
-      
-      const response = await axios.post(`${API_BASE}/auth/login`, {
-        email,
-        password,
-      }, {
-        timeout: 10000, // 10 second timeout
-      });
+
+      const response = await axios.post(
+        `${API_BASE}/auth/login`,
+        {
+          email,
+          password,
+        },
+        {
+          timeout: 10000, // 10 second timeout
+        }
+      );
 
       const { token: newToken, user: userData } = response.data;
 
@@ -87,8 +90,8 @@ export const AuthProvider = ({ children }) => {
       setToken(newToken);
       setUser(userData);
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
-      // Store in localStorage asynchronously 
+
+      // Store in localStorage asynchronously
       Promise.resolve().then(() => {
         localStorage.setItem('token', newToken);
         localStorage.setItem('user', JSON.stringify(userData));

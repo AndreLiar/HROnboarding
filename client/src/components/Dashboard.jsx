@@ -44,11 +44,11 @@ const Dashboard = ({ onViewChange }) => {
     try {
       setLoading(true);
       setError('');
-      
+
       // Get auth token for API calls
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      
+
       const promises = [];
 
       // Load templates
@@ -136,7 +136,8 @@ const Dashboard = ({ onViewChange }) => {
       setStats(newStats);
     } catch (err) {
       console.error('Dashboard loading error:', err);
-      const errorMsg = err.response?.data?.error || err.message || 'Erreur lors du chargement du tableau de bord';
+      const errorMsg =
+        err.response?.data?.error || err.message || 'Erreur lors du chargement du tableau de bord';
       setError(errorMsg);
     } finally {
       setLoading(false);
