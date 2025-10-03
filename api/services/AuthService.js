@@ -106,14 +106,14 @@ class AuthService {
       // Batch database operations for better performance
       const tokenHash = this.hashToken(token);
       const expiresAt = new Date(Date.now() + this.parseExpiry(this.jwtExpiry));
-      
-      const sessionResult = await pool.request()
+
+      const sessionResult = await pool
+        .request()
         .input('user_id', user.id)
         .input('token_hash', tokenHash)
         .input('ip_address', ipAddress || null)
         .input('user_agent', userAgent || null)
-        .input('expires_at', expiresAt)
-        .query(`
+        .input('expires_at', expiresAt).query(`
           -- Reset login attempts and update last login
           UPDATE Users 
           SET login_attempts = 0, locked_until = NULL, last_login = GETUTCDATE()
@@ -124,7 +124,7 @@ class AuthService {
           OUTPUT INSERTED.id
           VALUES (@user_id, @token_hash, @ip_address, @user_agent, @expires_at);
         `);
-        
+
       const sessionId = sessionResult.recordset[0]?.id;
 
       return {
