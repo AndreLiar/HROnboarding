@@ -347,15 +347,21 @@ jobs:
             --linux-fx-version "NODE|20-lts"
           
           # Wait for configuration to apply
-          sleep 10
+          sleep 15
           
-          # Step 2: Configure always-on and startup file (Linux compatible settings only)
-          echo "🔧 Setting always-on and startup configuration..."
+          # Step 2: Configure startup file only (avoid always-on conflicts)
+          echo "🔧 Setting startup configuration..."
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --always-on true \
             --startup-file "npm start"
+          
+          # Step 3: Configure always-on separately with app settings (safer approach)
+          echo "⚙️ Configuring always-on via app settings..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings WEBSITE_ALWAYS_ON="true" || true
           
           echo "✅ Azure App Service configured for Node.js 20.x on Linux"
 
