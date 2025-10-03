@@ -75,3 +75,7 @@ CLAUDE.md
 
 # Complete System Mastery Plan (learning materials - local only)
 Complete System Mastery Plan/
+
+# Environment values reference file (contains sensitive data)
+ENVIRONMENT_VALUES.md
+api/.env

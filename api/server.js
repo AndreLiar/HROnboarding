@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const swaggerUi = require('swagger-ui-express');
 
 // Import configurations
@@ -9,11 +10,38 @@ const swaggerSpecs = require('./config/swagger');
 // Import services
 const DatabaseService = require('./services/databaseService');
 
+// Import middleware
+const { generalLimiter, securityHeaders } = require('./middleware/auth');
+
 // Import routes
 const routes = require('./routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Trust proxy for accurate IP addresses (required for rate limiting)
+app.set('trust proxy', 1);
+
+// Security middleware
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// Custom security headers
+app.use(securityHeaders);
+
+// Rate limiting
+app.use(generalLimiter);
 
 // CORS configuration
 app.use(
@@ -22,13 +50,17 @@ app.use(
       'https://mango-pebble-0d01d2103.1.azurestaticapps.net',
       'http://localhost:3000',
       'http://localhost:5173',
-    ],
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean),
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   })
 );
 
 // Body parsing middleware
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Swagger documentation
 app.use(
