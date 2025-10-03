@@ -43,11 +43,17 @@ const Dashboard = ({ onViewChange }) => {
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
+      setError('');
+      
+      // Get auth token for API calls
+      const token = localStorage.getItem('token');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
       const promises = [];
 
       // Load templates
       promises.push(
-        axios.get(`${API_BASE}/templates?limit=100`).then(res => ({
+        axios.get(`${API_BASE}/templates?limit=100`, { headers }).then(res => ({
           type: 'templates',
           data: res.data,
         }))
@@ -55,7 +61,7 @@ const Dashboard = ({ onViewChange }) => {
 
       // Load categories
       promises.push(
-        axios.get(`${API_BASE}/templates/categories`).then(res => ({
+        axios.get(`${API_BASE}/templates/categories`, { headers }).then(res => ({
           type: 'categories',
           data: res.data,
         }))
@@ -64,7 +70,7 @@ const Dashboard = ({ onViewChange }) => {
       // Load users (if admin/hr)
       if (isAdmin || isHRManager) {
         promises.push(
-          axios.get(`${API_BASE}/users?limit=100`).then(res => ({
+          axios.get(`${API_BASE}/users?limit=100`, { headers }).then(res => ({
             type: 'users',
             data: res.data,
           }))
@@ -72,7 +78,7 @@ const Dashboard = ({ onViewChange }) => {
 
         // Load approval requests
         promises.push(
-          axios.get(`${API_BASE}/template-approval/requests?limit=100`).then(res => ({
+          axios.get(`${API_BASE}/template-approval/requests?limit=100`, { headers }).then(res => ({
             type: 'approvals',
             data: res.data,
           }))
@@ -80,7 +86,12 @@ const Dashboard = ({ onViewChange }) => {
       }
 
       const results = await Promise.all(promises);
-      const newStats = { ...stats };
+      const newStats = {
+        templates: { total: 0, approved: 0, pending: 0, draft: 0 },
+        users: { total: 0, active: 0, pending: 0 },
+        approvals: { pending: 0, approved: 0, rejected: 0 },
+        categories: [],
+      };
 
       results.forEach(result => {
         switch (result.type) {
@@ -123,14 +134,14 @@ const Dashboard = ({ onViewChange }) => {
       });
 
       setStats(newStats);
-      setError('');
     } catch (err) {
       console.error('Dashboard loading error:', err);
-      setError('Erreur lors du chargement du tableau de bord');
+      const errorMsg = err.response?.data?.error || err.message || 'Erreur lors du chargement du tableau de bord';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isHRManager, stats]);
+  }, [isAdmin, isHRManager]);
 
   useEffect(() => {
     loadDashboardData();

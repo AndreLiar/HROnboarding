@@ -37,14 +37,27 @@ export const AuthProvider = ({ children }) => {
 
       if (storedToken && storedUser) {
         try {
-          // Verify token is still valid
-          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-          await axios.get(`${API_BASE}/auth/me`);
-
+          // Set token and user immediately for better UX
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
+          axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          
+          // Verify token in background (non-blocking)
+          setTimeout(async () => {
+            try {
+              await axios.get(`${API_BASE}/auth/me`);
+            } catch (error) {
+              // Token is invalid, clear storage
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              delete axios.defaults.headers.common['Authorization'];
+              setToken(null);
+              setUser(null);
+            }
+          }, 100);
+          
         } catch (error) {
-          // Token is invalid, clear storage
+          // Invalid stored data, clear storage
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           delete axios.defaults.headers.common['Authorization'];
@@ -58,23 +71,33 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Set loading state immediately for better UX
+      setLoading(true);
+      
       const response = await axios.post(`${API_BASE}/auth/login`, {
         email,
         password,
+      }, {
+        timeout: 10000, // 10 second timeout
       });
 
       const { token: newToken, user: userData } = response.data;
 
+      // Set state and storage simultaneously for faster response
       setToken(newToken);
       setUser(userData);
-
-      localStorage.setItem('token', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      
+      // Store in localStorage asynchronously 
+      Promise.resolve().then(() => {
+        localStorage.setItem('token', newToken);
+        localStorage.setItem('user', JSON.stringify(userData));
+      });
 
+      setLoading(false);
       return { success: true, user: userData };
     } catch (error) {
+      setLoading(false);
       const message = error.response?.data?.error || 'Login failed';
       return { success: false, error: message };
     }

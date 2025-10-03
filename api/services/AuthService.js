@@ -100,20 +100,32 @@ class AuthService {
         throw new Error('Invalid email or password');
       }
 
-      // Reset login attempts on successful login
-      await this.resetLoginAttempts(user.id);
-
-      // Generate JWT token
+      // Generate JWT token first for faster response
       const token = this.generateToken(user);
 
-      // Create session record
-      const sessionId = await this.createSession(user.id, token, ipAddress, userAgent);
-
-      // Update last login
-      await pool
-        .request()
+      // Batch database operations for better performance
+      const tokenHash = this.hashToken(token);
+      const expiresAt = new Date(Date.now() + this.parseExpiry(this.jwtExpiry));
+      
+      const sessionResult = await pool.request()
         .input('user_id', user.id)
-        .query('UPDATE Users SET last_login = GETUTCDATE() WHERE id = @user_id');
+        .input('token_hash', tokenHash)
+        .input('ip_address', ipAddress || null)
+        .input('user_agent', userAgent || null)
+        .input('expires_at', expiresAt)
+        .query(`
+          -- Reset login attempts and update last login
+          UPDATE Users 
+          SET login_attempts = 0, locked_until = NULL, last_login = GETUTCDATE()
+          WHERE id = @user_id;
+          
+          -- Create session record
+          INSERT INTO UserSessions (user_id, token_hash, ip_address, user_agent, expires_at)
+          OUTPUT INSERTED.id
+          VALUES (@user_id, @token_hash, @ip_address, @user_agent, @expires_at);
+        `);
+        
+      const sessionId = sessionResult.recordset[0]?.id;
 
       return {
         user: this.sanitizeUser(user),
