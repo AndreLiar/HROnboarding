@@ -34,13 +34,13 @@ export const AuthProvider = ({ children }) => {
     const initializeAuth = async () => {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
-      
+
       if (storedToken && storedUser) {
         try {
           // Verify token is still valid
           axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           await axios.get(`${API_BASE}/auth/me`);
-          
+
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
         } catch (error) {
@@ -60,19 +60,19 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post(`${API_BASE}/auth/login`, {
         email,
-        password
+        password,
       });
 
       const { token: newToken, user: userData } = response.data;
-      
+
       setToken(newToken);
       setUser(userData);
-      
+
       localStorage.setItem('token', newToken);
       localStorage.setItem('user', JSON.stringify(userData));
-      
+
       axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-      
+
       return { success: true, user: userData };
     } catch (error) {
       const message = error.response?.data?.error || 'Login failed';
@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (userData) => {
+  const register = async userData => {
     try {
       const response = await axios.post(`${API_BASE}/users`, userData);
       return { success: true, data: response.data };
@@ -106,32 +106,42 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const hasPermission = (permission) => {
+  const hasPermission = permission => {
     if (!user) return false;
-    
+
     // Admin has all permissions
     if (user.role === 'admin') return true;
-    
+
     // HR Manager permissions
     if (user.role === 'hr_manager') {
       return [
-        'templates:view', 'templates:create', 'templates:edit', 'templates:delete',
-        'templates:approve', 'templates:clone', 'checklists:create', 'checklists:assign',
-        'users:create', 'users:read:all'
+        'templates:view',
+        'templates:create',
+        'templates:edit',
+        'templates:delete',
+        'templates:approve',
+        'templates:clone',
+        'checklists:create',
+        'checklists:assign',
+        'users:create',
+        'users:read:all',
       ].includes(permission);
     }
-    
+
     // Employee permissions
     if (user.role === 'employee') {
       return [
-        'templates:view', 'templates:read', 'checklists:read:own', 'checklists:update:own'
+        'templates:view',
+        'templates:read',
+        'checklists:read:own',
+        'checklists:update:own',
       ].includes(permission);
     }
-    
+
     return false;
   };
 
-  const isRole = (role) => {
+  const isRole = role => {
     return user?.role === role;
   };
 
@@ -147,12 +157,8 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!token && !!user,
     isAdmin: user?.role === 'admin',
     isHRManager: user?.role === 'hr_manager',
-    isEmployee: user?.role === 'employee'
+    isEmployee: user?.role === 'employee',
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

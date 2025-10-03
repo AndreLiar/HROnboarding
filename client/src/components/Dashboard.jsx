@@ -12,7 +12,7 @@ import {
   ListItem,
   ListItemText,
   ListItemIcon,
-  Divider
+  Divider,
 } from '@mui/material';
 import {
   Assignment,
@@ -20,7 +20,7 @@ import {
   Approval,
   CheckCircle,
   Warning,
-  TrendingUp
+  TrendingUp,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
@@ -35,7 +35,7 @@ const Dashboard = ({ onViewChange }) => {
     templates: { total: 0, approved: 0, pending: 0, draft: 0 },
     users: { total: 0, active: 0, pending: 0 },
     approvals: { pending: 0, approved: 0, rejected: 0 },
-    categories: []
+    categories: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,7 +49,7 @@ const Dashboard = ({ onViewChange }) => {
       promises.push(
         axios.get(`${API_BASE}/templates?limit=100`).then(res => ({
           type: 'templates',
-          data: res.data
+          data: res.data,
         }))
       );
 
@@ -57,7 +57,7 @@ const Dashboard = ({ onViewChange }) => {
       promises.push(
         axios.get(`${API_BASE}/templates/categories`).then(res => ({
           type: 'categories',
-          data: res.data
+          data: res.data,
         }))
       );
 
@@ -66,7 +66,7 @@ const Dashboard = ({ onViewChange }) => {
         promises.push(
           axios.get(`${API_BASE}/users?limit=100`).then(res => ({
             type: 'users',
-            data: res.data
+            data: res.data,
           }))
         );
 
@@ -74,7 +74,7 @@ const Dashboard = ({ onViewChange }) => {
         promises.push(
           axios.get(`${API_BASE}/template-approval/requests?limit=100`).then(res => ({
             type: 'approvals',
-            data: res.data
+            data: res.data,
           }))
         );
       }
@@ -90,7 +90,7 @@ const Dashboard = ({ onViewChange }) => {
               total: templates.length,
               approved: templates.filter(t => t.status === 'approved').length,
               pending: templates.filter(t => t.status === 'pending_approval').length,
-              draft: templates.filter(t => t.status === 'draft').length
+              draft: templates.filter(t => t.status === 'draft').length,
             };
             break;
           }
@@ -105,7 +105,7 @@ const Dashboard = ({ onViewChange }) => {
             newStats.users = {
               total: users.length,
               active: users.filter(u => u.is_active).length,
-              pending: users.filter(u => !u.email_verified).length
+              pending: users.filter(u => !u.email_verified).length,
             };
             break;
           }
@@ -115,7 +115,7 @@ const Dashboard = ({ onViewChange }) => {
             newStats.approvals = {
               pending: approvals.filter(a => a.status === 'pending').length,
               approved: approvals.filter(a => a.status === 'approved').length,
-              rejected: approvals.filter(a => a.status === 'rejected').length
+              rejected: approvals.filter(a => a.status === 'rejected').length,
             };
             break;
           }
@@ -137,30 +137,26 @@ const Dashboard = ({ onViewChange }) => {
   }, [loadDashboardData]);
 
   const StatCard = ({ title, value, subtitle, color = 'primary', icon, onClick }) => (
-    <Card 
-      sx={{ 
+    <Card
+      sx={{
         cursor: onClick ? 'pointer' : 'default',
         transition: 'transform 0.2s',
-        '&:hover': onClick ? { transform: 'translateY(-2px)' } : {}
+        '&:hover': onClick ? { transform: 'translateY(-2px)' } : {},
       }}
       onClick={onClick}
     >
       <CardContent>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          {icon && (
-            <Box sx={{ mr: 1, color: `${color}.main` }}>
-              {icon}
-            </Box>
-          )}
-          <Typography variant="h6" component="div">
+          {icon && <Box sx={{ mr: 1, color: `${color}.main` }}>{icon}</Box>}
+          <Typography variant='h6' component='div'>
             {title}
           </Typography>
         </Box>
-        <Typography variant="h3" color={`${color}.main`} gutterBottom>
+        <Typography variant='h3' color={`${color}.main`} gutterBottom>
           {value}
         </Typography>
         {subtitle && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant='body2' color='text.secondary'>
             {subtitle}
           </Typography>
         )}
@@ -171,7 +167,7 @@ const Dashboard = ({ onViewChange }) => {
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant='h4' gutterBottom>
           Tableau de bord
         </Typography>
         <LinearProgress />
@@ -181,16 +177,16 @@ const Dashboard = ({ onViewChange }) => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+      <Typography variant='h4' gutterBottom>
         Bienvenue, {user?.first_name}!
       </Typography>
-      
-      <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+
+      <Typography variant='subtitle1' color='text.secondary' sx={{ mb: 3 }}>
         Vue d'ensemble de votre système HR Onboarding
       </Typography>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity='error' sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
@@ -199,10 +195,10 @@ const Dashboard = ({ onViewChange }) => {
         {/* Template Stats */}
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Templates"
+            title='Templates'
             value={stats.templates.total}
             subtitle={`${stats.templates.approved} approuvés`}
-            color="primary"
+            color='primary'
             icon={<Assignment />}
             onClick={() => onViewChange('templates')}
           />
@@ -212,10 +208,10 @@ const Dashboard = ({ onViewChange }) => {
         {(isAdmin || isHRManager) && (
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="Utilisateurs"
+              title='Utilisateurs'
               value={stats.users.total}
               subtitle={`${stats.users.active} actifs`}
-              color="success"
+              color='success'
               icon={<People />}
               onClick={() => onViewChange('users')}
             />
@@ -226,10 +222,10 @@ const Dashboard = ({ onViewChange }) => {
         {(isAdmin || isHRManager) && (
           <Grid item xs={12} sm={6} md={3}>
             <StatCard
-              title="En attente"
+              title='En attente'
               value={stats.approvals.pending}
-              subtitle="Approbations"
-              color="warning"
+              subtitle='Approbations'
+              color='warning'
               icon={<Approval />}
               onClick={() => onViewChange('approvals')}
             />
@@ -239,10 +235,10 @@ const Dashboard = ({ onViewChange }) => {
         {/* Categories */}
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
-            title="Catégories"
+            title='Catégories'
             value={stats.categories.length}
-            subtitle="Disponibles"
-            color="info"
+            subtitle='Disponibles'
+            color='info'
             icon={<TrendingUp />}
           />
         </Grid>
@@ -251,40 +247,52 @@ const Dashboard = ({ onViewChange }) => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant='h6' gutterBottom>
                 Statut des Templates
               </Typography>
-              
+
               <Box sx={{ mt: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Approuvés</Typography>
-                  <Typography variant="body2">{stats.templates.approved}</Typography>
+                  <Typography variant='body2'>Approuvés</Typography>
+                  <Typography variant='body2'>{stats.templates.approved}</Typography>
                 </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={stats.templates.total > 0 ? (stats.templates.approved / stats.templates.total) * 100 : 0}
+                <LinearProgress
+                  variant='determinate'
+                  value={
+                    stats.templates.total > 0
+                      ? (stats.templates.approved / stats.templates.total) * 100
+                      : 0
+                  }
                   sx={{ mb: 2 }}
                 />
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">En attente</Typography>
-                  <Typography variant="body2">{stats.templates.pending}</Typography>
+                  <Typography variant='body2'>En attente</Typography>
+                  <Typography variant='body2'>{stats.templates.pending}</Typography>
                 </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={stats.templates.total > 0 ? (stats.templates.pending / stats.templates.total) * 100 : 0}
-                  color="warning"
+                <LinearProgress
+                  variant='determinate'
+                  value={
+                    stats.templates.total > 0
+                      ? (stats.templates.pending / stats.templates.total) * 100
+                      : 0
+                  }
+                  color='warning'
                   sx={{ mb: 2 }}
                 />
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">Brouillons</Typography>
-                  <Typography variant="body2">{stats.templates.draft}</Typography>
+                  <Typography variant='body2'>Brouillons</Typography>
+                  <Typography variant='body2'>{stats.templates.draft}</Typography>
                 </Box>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={stats.templates.total > 0 ? (stats.templates.draft / stats.templates.total) * 100 : 0}
-                  color="info"
+                <LinearProgress
+                  variant='determinate'
+                  value={
+                    stats.templates.total > 0
+                      ? (stats.templates.draft / stats.templates.total) * 100
+                      : 0
+                  }
+                  color='info'
                 />
               </Box>
             </CardContent>
@@ -295,27 +303,27 @@ const Dashboard = ({ onViewChange }) => {
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant='h6' gutterBottom>
                 Catégories de Templates
               </Typography>
-              
+
               <List dense>
                 {stats.categories.map((category, index) => (
                   <React.Fragment key={category.id}>
                     <ListItem>
                       <ListItemIcon>
-                        <Box 
-                          sx={{ 
-                            width: 24, 
-                            height: 24, 
-                            borderRadius: '50%', 
+                        <Box
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
                             bgcolor: category.color,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center'
+                            justifyContent: 'center',
                           }}
                         >
-                          <Typography variant="caption" color="white" sx={{ fontSize: '0.6rem' }}>
+                          <Typography variant='caption' color='white' sx={{ fontSize: '0.6rem' }}>
                             {category.template_count}
                           </Typography>
                         </Box>
@@ -337,26 +345,26 @@ const Dashboard = ({ onViewChange }) => {
         <Grid item xs={12}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>
+              <Typography variant='h6' gutterBottom>
                 Actions rapides
               </Typography>
-              
+
               <Grid container spacing={2}>
                 {(isAdmin || isHRManager) && (
                   <>
                     <Grid item>
-                      <Button 
-                        variant="contained" 
+                      <Button
+                        variant='contained'
                         startIcon={<Assignment />}
                         onClick={() => onViewChange('templates')}
                       >
                         Créer Template
                       </Button>
                     </Grid>
-                    
+
                     <Grid item>
-                      <Button 
-                        variant="outlined" 
+                      <Button
+                        variant='outlined'
                         startIcon={<People />}
                         onClick={() => onViewChange('users')}
                       >
@@ -365,10 +373,10 @@ const Dashboard = ({ onViewChange }) => {
                     </Grid>
                   </>
                 )}
-                
+
                 <Grid item>
-                  <Button 
-                    variant="outlined" 
+                  <Button
+                    variant='outlined'
                     startIcon={<CheckCircle />}
                     onClick={() => onViewChange('checklists')}
                   >
@@ -378,9 +386,9 @@ const Dashboard = ({ onViewChange }) => {
 
                 {stats.approvals.pending > 0 && (isAdmin || isHRManager) && (
                   <Grid item>
-                    <Button 
-                      variant="outlined" 
-                      color="warning"
+                    <Button
+                      variant='outlined'
+                      color='warning'
                       startIcon={<Warning />}
                       onClick={() => onViewChange('approvals')}
                     >

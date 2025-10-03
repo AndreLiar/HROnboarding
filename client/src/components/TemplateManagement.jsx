@@ -19,7 +19,7 @@ import {
   Menu,
   LinearProgress,
   Tabs,
-  Tab
+  Tab,
 } from '@mui/material';
 import {
   Add,
@@ -31,7 +31,7 @@ import {
   Visibility,
   Schedule,
   CheckCircle,
-  Draft
+  Draft,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
@@ -65,18 +65,18 @@ const TemplateManagement = () => {
     target_departments: '',
     compliance_frameworks: '',
     tags: '',
-    items: []
+    items: [],
   });
 
   const loadTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      
+
       if (selectedCategory !== 'all') {
         params.append('category', selectedCategory);
       }
-      
+
       if (selectedStatus !== 'all') {
         params.append('status', selectedStatus);
       }
@@ -106,7 +106,7 @@ const TemplateManagement = () => {
     loadCategories();
   }, [loadTemplates, loadCategories]);
 
-  const loadTemplateDetails = async (templateId) => {
+  const loadTemplateDetails = async templateId => {
     try {
       const response = await axios.get(`${API_BASE}/templates/${templateId}?includeItems=true`);
       setSelectedTemplate(response.data);
@@ -120,10 +120,18 @@ const TemplateManagement = () => {
     try {
       const templateData = {
         ...formData,
-        target_roles: formData.target_roles ? JSON.stringify(formData.target_roles.split(',').map(r => r.trim())) : null,
-        target_departments: formData.target_departments ? JSON.stringify(formData.target_departments.split(',').map(d => d.trim())) : null,
-        compliance_frameworks: formData.compliance_frameworks ? JSON.stringify(formData.compliance_frameworks.split(',').map(c => c.trim())) : null,
-        estimated_duration_minutes: formData.estimated_duration_minutes ? parseInt(formData.estimated_duration_minutes) : null
+        target_roles: formData.target_roles
+          ? JSON.stringify(formData.target_roles.split(',').map(r => r.trim()))
+          : null,
+        target_departments: formData.target_departments
+          ? JSON.stringify(formData.target_departments.split(',').map(d => d.trim()))
+          : null,
+        compliance_frameworks: formData.compliance_frameworks
+          ? JSON.stringify(formData.compliance_frameworks.split(',').map(c => c.trim()))
+          : null,
+        estimated_duration_minutes: formData.estimated_duration_minutes
+          ? parseInt(formData.estimated_duration_minutes)
+          : null,
       };
 
       await axios.post(`${API_BASE}/templates`, templateData);
@@ -139,10 +147,18 @@ const TemplateManagement = () => {
     try {
       const templateData = {
         ...formData,
-        target_roles: formData.target_roles ? JSON.stringify(formData.target_roles.split(',').map(r => r.trim())) : null,
-        target_departments: formData.target_departments ? JSON.stringify(formData.target_departments.split(',').map(d => d.trim())) : null,
-        compliance_frameworks: formData.compliance_frameworks ? JSON.stringify(formData.compliance_frameworks.split(',').map(c => c.trim())) : null,
-        estimated_duration_minutes: formData.estimated_duration_minutes ? parseInt(formData.estimated_duration_minutes) : null
+        target_roles: formData.target_roles
+          ? JSON.stringify(formData.target_roles.split(',').map(r => r.trim()))
+          : null,
+        target_departments: formData.target_departments
+          ? JSON.stringify(formData.target_departments.split(',').map(d => d.trim()))
+          : null,
+        compliance_frameworks: formData.compliance_frameworks
+          ? JSON.stringify(formData.compliance_frameworks.split(',').map(c => c.trim()))
+          : null,
+        estimated_duration_minutes: formData.estimated_duration_minutes
+          ? parseInt(formData.estimated_duration_minutes)
+          : null,
       };
 
       await axios.put(`${API_BASE}/templates/${selectedTemplate.id}`, templateData);
@@ -154,7 +170,7 @@ const TemplateManagement = () => {
     }
   };
 
-  const handleDeleteTemplate = async (templateId) => {
+  const handleDeleteTemplate = async templateId => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce template ?')) {
       try {
         await axios.delete(`${API_BASE}/templates/${templateId}`);
@@ -165,7 +181,7 @@ const TemplateManagement = () => {
     }
   };
 
-  const handleCloneTemplate = async (templateId) => {
+  const handleCloneTemplate = async templateId => {
     try {
       await axios.post(`${API_BASE}/templates/${templateId}/clone`);
       loadTemplates();
@@ -175,10 +191,10 @@ const TemplateManagement = () => {
     }
   };
 
-  const handleSubmitForApproval = async (templateId) => {
+  const handleSubmitForApproval = async templateId => {
     try {
       await axios.post(`${API_BASE}/template-approval/templates/${templateId}/submit`, {
-        comments: 'Template soumis pour approbation'
+        comments: 'Template soumis pour approbation',
       });
       loadTemplates();
       setError('');
@@ -197,11 +213,11 @@ const TemplateManagement = () => {
       target_departments: '',
       compliance_frameworks: '',
       tags: '',
-      items: []
+      items: [],
     });
   };
 
-  const openEditDialog = (template) => {
+  const openEditDialog = template => {
     setSelectedTemplate(template);
     setFormData({
       name: template.name || '',
@@ -209,47 +225,65 @@ const TemplateManagement = () => {
       category: template.category || '',
       estimated_duration_minutes: template.estimated_duration_minutes || '',
       target_roles: template.target_roles ? JSON.parse(template.target_roles).join(', ') : '',
-      target_departments: template.target_departments ? JSON.parse(template.target_departments).join(', ') : '',
-      compliance_frameworks: template.compliance_frameworks ? JSON.parse(template.compliance_frameworks).join(', ') : '',
+      target_departments: template.target_departments
+        ? JSON.parse(template.target_departments).join(', ')
+        : '',
+      compliance_frameworks: template.compliance_frameworks
+        ? JSON.parse(template.compliance_frameworks).join(', ')
+        : '',
       tags: template.tags || '',
-      items: []
+      items: [],
     });
     setEditDialogOpen(true);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = status => {
     switch (status) {
-      case 'approved': return 'success';
-      case 'pending_approval': return 'warning';
-      case 'draft': return 'info';
-      case 'archived': return 'default';
-      default: return 'default';
+      case 'approved':
+        return 'success';
+      case 'pending_approval':
+        return 'warning';
+      case 'draft':
+        return 'info';
+      case 'archived':
+        return 'default';
+      default:
+        return 'default';
     }
   };
 
-  const getStatusIcon = (status) => {
+  const getStatusIcon = status => {
     switch (status) {
-      case 'approved': return <CheckCircle />;
-      case 'pending_approval': return <Schedule />;
-      case 'draft': return <Draft />;
-      default: return null;
+      case 'approved':
+        return <CheckCircle />;
+      case 'pending_approval':
+        return <Schedule />;
+      case 'draft':
+        return <Draft />;
+      default:
+        return null;
     }
   };
 
-  const getStatusLabel = (status) => {
+  const getStatusLabel = status => {
     switch (status) {
-      case 'approved': return 'Approuvé';
-      case 'pending_approval': return 'En attente';
-      case 'draft': return 'Brouillon';
-      case 'archived': return 'Archivé';
-      default: return status;
+      case 'approved':
+        return 'Approuvé';
+      case 'pending_approval':
+        return 'En attente';
+      case 'draft':
+        return 'Brouillon';
+      case 'archived':
+        return 'Archivé';
+      default:
+        return status;
     }
   };
 
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant='h4' gutterBottom>
           Gestion des Templates
         </Typography>
         <LinearProgress />
@@ -260,23 +294,17 @@ const TemplateManagement = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4">
-          Gestion des Templates
-        </Typography>
-        
+        <Typography variant='h4'>Gestion des Templates</Typography>
+
         {hasPermission('templates:create') && (
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setCreateDialogOpen(true)}
-          >
+          <Button variant='contained' startIcon={<Add />} onClick={() => setCreateDialogOpen(true)}>
             Nouveau Template
           </Button>
         )}
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity='error' sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
@@ -284,22 +312,22 @@ const TemplateManagement = () => {
       {/* Filters */}
       <Box sx={{ mb: 3 }}>
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }}>
-          <Tab label="Tous" onClick={() => setSelectedStatus('all')} />
-          <Tab label="Approuvés" onClick={() => setSelectedStatus('approved')} />
-          <Tab label="En attente" onClick={() => setSelectedStatus('pending_approval')} />
-          <Tab label="Brouillons" onClick={() => setSelectedStatus('draft')} />
+          <Tab label='Tous' onClick={() => setSelectedStatus('all')} />
+          <Tab label='Approuvés' onClick={() => setSelectedStatus('approved')} />
+          <Tab label='En attente' onClick={() => setSelectedStatus('pending_approval')} />
+          <Tab label='Brouillons' onClick={() => setSelectedStatus('draft')} />
         </Tabs>
 
         <TextField
           select
-          label="Catégorie"
+          label='Catégorie'
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          size="small"
+          onChange={e => setSelectedCategory(e.target.value)}
+          size='small'
           sx={{ minWidth: 200 }}
         >
-          <MenuItem value="all">Toutes les catégories</MenuItem>
-          {categories.map((category) => (
+          <MenuItem value='all'>Toutes les catégories</MenuItem>
+          {categories.map(category => (
             <MenuItem key={category.id} value={category.name}>
               {category.display_name}
             </MenuItem>
@@ -309,24 +337,31 @@ const TemplateManagement = () => {
 
       {/* Templates Grid */}
       <Grid container spacing={3}>
-        {templates.map((template) => (
+        {templates.map(template => (
           <Grid item xs={12} sm={6} md={4} key={template.id}>
             <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <CardContent sx={{ flexGrow: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Typography variant="h6" component="h3" sx={{ flexGrow: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant='h6' component='h3' sx={{ flexGrow: 1 }}>
                     {template.name}
                   </Typography>
-                  
+
                   <IconButton
-                    size="small"
-                    onClick={(e) => setActionMenu({ anchorEl: e.currentTarget, template })}
+                    size='small'
+                    onClick={e => setActionMenu({ anchorEl: e.currentTarget, template })}
                   >
                     <MoreVert />
                   </IconButton>
                 </Box>
 
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
                   {template.description || 'Aucune description'}
                 </Typography>
 
@@ -334,33 +369,37 @@ const TemplateManagement = () => {
                   <Chip
                     label={getStatusLabel(template.status)}
                     color={getStatusColor(template.status)}
-                    size="small"
+                    size='small'
                     icon={getStatusIcon(template.status)}
                     sx={{ mr: 1 }}
                   />
-                  
+
                   <Chip
                     label={template.category_display_name || template.category}
-                    variant="outlined"
-                    size="small"
-                    sx={{ backgroundColor: template.category_color + '20', borderColor: template.category_color }}
+                    variant='outlined'
+                    size='small'
+                    sx={{
+                      backgroundColor: template.category_color + '20',
+                      borderColor: template.category_color,
+                    }}
                   />
                 </Box>
 
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant='caption' color='text.secondary'>
                   Version {template.version} • {template.item_count || 0} éléments
                 </Typography>
-                
+
                 {template.estimated_duration_minutes && (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Durée estimée: {Math.floor(template.estimated_duration_minutes / 60)}h {template.estimated_duration_minutes % 60}min
+                  <Typography variant='caption' color='text.secondary' display='block'>
+                    Durée estimée: {Math.floor(template.estimated_duration_minutes / 60)}h{' '}
+                    {template.estimated_duration_minutes % 60}min
                   </Typography>
                 )}
               </CardContent>
 
               <CardActions>
                 <Button
-                  size="small"
+                  size='small'
                   startIcon={<Visibility />}
                   onClick={() => loadTemplateDetails(template.id)}
                 >
@@ -369,7 +408,7 @@ const TemplateManagement = () => {
 
                 {hasPermission('templates:edit') && template.status === 'draft' && (
                   <Button
-                    size="small"
+                    size='small'
                     startIcon={<Edit />}
                     onClick={() => openEditDialog(template)}
                   >
@@ -379,7 +418,7 @@ const TemplateManagement = () => {
 
                 {hasPermission('templates:create') && (
                   <Button
-                    size="small"
+                    size='small'
                     startIcon={<FileCopy />}
                     onClick={() => handleCloneTemplate(template.id)}
                   >
@@ -394,11 +433,13 @@ const TemplateManagement = () => {
 
       {templates.length === 0 && (
         <Box sx={{ textAlign: 'center', py: 8 }}>
-          <Typography variant="h6" color="text.secondary">
+          <Typography variant='h6' color='text.secondary'>
             Aucun template trouvé
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {hasPermission('templates:create') ? 'Créez votre premier template pour commencer' : 'Aucun template disponible pour le moment'}
+          <Typography variant='body2' color='text.secondary'>
+            {hasPermission('templates:create')
+              ? 'Créez votre premier template pour commencer'
+              : 'Aucun template disponible pour le moment'}
           </Typography>
         </Box>
       )}
@@ -410,20 +451,24 @@ const TemplateManagement = () => {
         onClose={() => setActionMenu({ anchorEl: null, template: null })}
       >
         {actionMenu.template?.status === 'draft' && hasPermission('templates:edit') && (
-          <MenuItem onClick={() => {
-            handleSubmitForApproval(actionMenu.template.id);
-            setActionMenu({ anchorEl: null, template: null });
-          }}>
+          <MenuItem
+            onClick={() => {
+              handleSubmitForApproval(actionMenu.template.id);
+              setActionMenu({ anchorEl: null, template: null });
+            }}
+          >
             <Send sx={{ mr: 1 }} />
             Soumettre pour approbation
           </MenuItem>
         )}
-        
+
         {hasPermission('templates:delete') && (
-          <MenuItem onClick={() => {
-            handleDeleteTemplate(actionMenu.template.id);
-            setActionMenu({ anchorEl: null, template: null });
-          }}>
+          <MenuItem
+            onClick={() => {
+              handleDeleteTemplate(actionMenu.template.id);
+              setActionMenu({ anchorEl: null, template: null });
+            }}
+          >
             <Delete sx={{ mr: 1 }} />
             Supprimer
           </MenuItem>
@@ -431,220 +476,248 @@ const TemplateManagement = () => {
       </Menu>
 
       {/* Create Dialog */}
-      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        maxWidth='md'
+        fullWidth
+      >
         <DialogTitle>Créer un nouveau template</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Nom du template"
+                label='Nom du template'
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Description"
+                label='Description'
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 multiline
                 rows={3}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 select
-                label="Catégorie"
+                label='Catégorie'
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
                 required
               >
-                {categories.map((category) => (
+                {categories.map(category => (
                   <MenuItem key={category.id} value={category.name}>
                     {category.display_name}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Durée estimée (minutes)"
-                type="number"
+                label='Durée estimée (minutes)'
+                type='number'
                 value={formData.estimated_duration_minutes}
-                onChange={(e) => setFormData({ ...formData, estimated_duration_minutes: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, estimated_duration_minutes: e.target.value })
+                }
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Rôles cibles (séparés par des virgules)"
+                label='Rôles cibles (séparés par des virgules)'
                 value={formData.target_roles}
-                onChange={(e) => setFormData({ ...formData, target_roles: e.target.value })}
-                placeholder="employee, manager, contractor"
+                onChange={e => setFormData({ ...formData, target_roles: e.target.value })}
+                placeholder='employee, manager, contractor'
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Départements cibles (séparés par des virgules)"
+                label='Départements cibles (séparés par des virgules)'
                 value={formData.target_departments}
-                onChange={(e) => setFormData({ ...formData, target_departments: e.target.value })}
-                placeholder="HR, IT, Operations"
+                onChange={e => setFormData({ ...formData, target_departments: e.target.value })}
+                placeholder='HR, IT, Operations'
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Tags (séparés par des virgules)"
+                label='Tags (séparés par des virgules)'
                 value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="onboarding, training, compliance"
+                onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                placeholder='onboarding, training, compliance'
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCreateDialogOpen(false)}>Annuler</Button>
-          <Button onClick={handleCreateTemplate} variant="contained">Créer</Button>
+          <Button onClick={handleCreateTemplate} variant='contained'>
+            Créer
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth='md'
+        fullWidth
+      >
         <DialogTitle>Modifier le template</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Nom du template"
+                label='Nom du template'
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
                 required
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Description"
+                label='Description'
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
                 multiline
                 rows={3}
               />
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 select
-                label="Catégorie"
+                label='Catégorie'
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={e => setFormData({ ...formData, category: e.target.value })}
                 required
               >
-                {categories.map((category) => (
+                {categories.map(category => (
                   <MenuItem key={category.id} value={category.name}>
                     {category.display_name}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
-            
+
             <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
-                label="Durée estimée (minutes)"
-                type="number"
+                label='Durée estimée (minutes)'
+                type='number'
                 value={formData.estimated_duration_minutes}
-                onChange={(e) => setFormData({ ...formData, estimated_duration_minutes: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, estimated_duration_minutes: e.target.value })
+                }
               />
             </Grid>
-            
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label="Tags (séparés par des virgules)"
+                label='Tags (séparés par des virgules)'
                 value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="onboarding, training, compliance"
+                onChange={e => setFormData({ ...formData, tags: e.target.value })}
+                placeholder='onboarding, training, compliance'
               />
             </Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditDialogOpen(false)}>Annuler</Button>
-          <Button onClick={handleUpdateTemplate} variant="contained">Mettre à jour</Button>
+          <Button onClick={handleUpdateTemplate} variant='contained'>
+            Mettre à jour
+          </Button>
         </DialogActions>
       </Dialog>
 
       {/* View Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        maxWidth='md'
+        fullWidth
+      >
         <DialogTitle>
           {selectedTemplate?.name}
           <Chip
             label={getStatusLabel(selectedTemplate?.status)}
             color={getStatusColor(selectedTemplate?.status)}
-            size="small"
+            size='small'
             sx={{ ml: 2 }}
           />
         </DialogTitle>
         <DialogContent>
           {selectedTemplate && (
             <Box>
-              <Typography variant="body1" sx={{ mb: 2 }}>
+              <Typography variant='body1' sx={{ mb: 2 }}>
                 {selectedTemplate.description}
               </Typography>
-              
-              <Typography variant="h6" sx={{ mb: 1 }}>
+
+              <Typography variant='h6' sx={{ mb: 1 }}>
                 Détails
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant='body2' color='text.secondary'>
                 Catégorie: {selectedTemplate.category_display_name}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant='body2' color='text.secondary'>
                 Version: {selectedTemplate.version}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant='body2' color='text.secondary'>
                 Éléments: {selectedTemplate.items?.length || 0}
               </Typography>
               {selectedTemplate.estimated_duration_minutes && (
-                <Typography variant="body2" color="text.secondary">
-                  Durée estimée: {Math.floor(selectedTemplate.estimated_duration_minutes / 60)}h {selectedTemplate.estimated_duration_minutes % 60}min
+                <Typography variant='body2' color='text.secondary'>
+                  Durée estimée: {Math.floor(selectedTemplate.estimated_duration_minutes / 60)}h{' '}
+                  {selectedTemplate.estimated_duration_minutes % 60}min
                 </Typography>
               )}
-              
+
               {selectedTemplate.items && selectedTemplate.items.length > 0 && (
                 <Box sx={{ mt: 3 }}>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
+                  <Typography variant='h6' sx={{ mb: 2 }}>
                     Éléments du template
                   </Typography>
                   {selectedTemplate.items.map((item, index) => (
-                    <Card key={item.id} variant="outlined" sx={{ mb: 1 }}>
+                    <Card key={item.id} variant='outlined' sx={{ mb: 1 }}>
                       <CardContent sx={{ py: 1 }}>
-                        <Typography variant="subtitle2">
+                        <Typography variant='subtitle2'>
                           {index + 1}. {item.title}
                         </Typography>
                         {item.description && (
-                          <Typography variant="body2" color="text.secondary">
+                          <Typography variant='body2' color='text.secondary'>
                             {item.description}
                           </Typography>
                         )}
                         <Box sx={{ mt: 1 }}>
-                          <Chip label={item.assignee_role} size="small" sx={{ mr: 1 }} />
-                          <Chip label={`Jour ${item.due_days_from_start}`} size="small" variant="outlined" />
+                          <Chip label={item.assignee_role} size='small' sx={{ mr: 1 }} />
+                          <Chip
+                            label={`Jour ${item.due_days_from_start}`}
+                            size='small'
+                            variant='outlined'
+                          />
                         </Box>
                       </CardContent>
                     </Card>

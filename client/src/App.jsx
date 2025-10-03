@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Typography, Box, Alert, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import {
+  Container,
+  Typography,
+  Box,
+  Alert,
+  CssBaseline,
+  ThemeProvider,
+  createTheme,
+} from '@mui/material';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import Navigation from './components/Navigation';
@@ -59,7 +67,9 @@ function AppContent() {
   // Show loading during authentication check
   if (authLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}
+      >
         <Typography>Chargement...</Typography>
       </Box>
     );
@@ -73,7 +83,13 @@ function AppContent() {
           <Typography variant='h3' component='h1' gutterBottom align='center'>
             HR Onboarding
           </Typography>
-          <Typography variant='h6' component='h2' gutterBottom align='center' color='text.secondary'>
+          <Typography
+            variant='h6'
+            component='h2'
+            gutterBottom
+            align='center'
+            color='text.secondary'
+          >
             Checklist Partagée
           </Typography>
 
@@ -223,9 +239,7 @@ function AppContent() {
             <Typography variant='h4' gutterBottom>
               Paramètres
             </Typography>
-            <Alert severity='info'>
-              Paramètres système - Fonctionnalité à venir
-            </Alert>
+            <Alert severity='info'>Paramètres système - Fonctionnalité à venir</Alert>
           </Box>
         );
       case 'profile':
@@ -234,9 +248,7 @@ function AppContent() {
             <Typography variant='h4' gutterBottom>
               Mon Profil
             </Typography>
-            <Alert severity='info'>
-              Gestion du profil utilisateur - Fonctionnalité à venir
-            </Alert>
+            <Alert severity='info'>Gestion du profil utilisateur - Fonctionnalité à venir</Alert>
           </Box>
         );
       default:
@@ -247,7 +259,7 @@ function AppContent() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <Navigation currentView={currentView} onViewChange={setCurrentView} />
-      <Box component="main" sx={{ flexGrow: 1, bgcolor: 'grey.50' }}>
+      <Box component='main' sx={{ flexGrow: 1, bgcolor: 'grey.50' }}>
         {renderCurrentView()}
       </Box>
     </Box>

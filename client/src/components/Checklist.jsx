@@ -123,8 +123,8 @@ function Checklist({ checklist, role, department, onChange, readOnly = false }) 
           </ListItem>
         ))}
 
-        {!readOnly && (
-          addingNew ? (
+        {!readOnly &&
+          (addingNew ? (
             <ListItem sx={{ px: 0 }}>
               <ListItemIcon>
                 <CheckCircle color='action' />
@@ -168,8 +168,7 @@ function Checklist({ checklist, role, department, onChange, readOnly = false }) 
                 }
               />
             </ListItem>
-          )
-        )}
+          ))}
       </List>
     </Paper>
   );
