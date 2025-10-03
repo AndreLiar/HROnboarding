@@ -6,15 +6,25 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Deploy HR Onboarding Application"]
+    types: 
+      - completed
     branches:
       - main      # Production deployment
       - staging   # Staging deployment
       - dev       # Development deployment
-  pull_request:
-    branches:
-      - main
-      - staging
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for blue-green deployment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
 
 env:
   NODE_VERSION: '20'
@@ -22,9 +32,32 @@ env:
   AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
 
 jobs:
+  # Check if prerequisite deployment succeeded
+  check-prerequisite:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    outputs:
+      should-run: ${{ steps.check.outputs.result }}
+    steps:
+      - name: Check workflow trigger
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "✅ Manual trigger - blue-green deployment will run"
+          elif [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+            echo "✅ Basic deployment succeeded - proceeding with blue-green deployment"
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+            echo "❌ Basic deployment failed - skipping blue-green deployment"
+          fi
+
   # Generate semantic version and setup
   version-and-setup:
+    needs: check-prerequisite
     runs-on: ubuntu-latest
+    if: needs.check-prerequisite.outputs.should-run == 'true'
     outputs:
       version: ${{ steps.version.outputs.version }}
       version-tag: ${{ steps.version.outputs.version-tag }}
@@ -85,8 +118,9 @@ jobs:
 
   # Run tests and quality checks
   test-and-validate:
-    needs: version-and-setup
+    needs: [check-prerequisite, version-and-setup]
     runs-on: ubuntu-latest
+    if: needs.check-prerequisite.outputs.should-run == 'true'
     steps:
       - uses: actions/checkout@v4
 

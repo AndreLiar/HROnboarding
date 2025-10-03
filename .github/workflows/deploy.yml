@@ -1,8 +1,15 @@
 name: Deploy HR Onboarding Application
 
 on:
-  # Disabled to prevent conflicts with blue-green deployment
-  # Use deploy-blue-green.yml for all deployments
+  push:
+    branches:
+      - main      # Production deployment
+      - staging   # Staging deployment  
+      - dev       # Development deployment
+  pull_request:
+    branches:
+      - main
+      - staging
   workflow_dispatch:
     inputs:
       environment:
