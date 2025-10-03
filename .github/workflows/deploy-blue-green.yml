@@ -403,11 +403,28 @@ jobs:
               ORYX_PLATFORM_NAME="nodejs" \
               ORYX_PLATFORM_VERSION="20" || true
           
+          # Debug: Check what environment variables were actually set
+          echo "🔍 Verifying environment variables were set..."
+          az webapp config appsettings list \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --query "[?name=='NODE_ENV' || name=='PORT' || name=='DATABASE_SERVER' || name=='JWT_SECRET'].{name:name, value:value}" \
+            --output table
+          
           # Restart app to ensure environment variables take effect
           echo "🔄 Restarting app to apply configuration changes"
           az webapp restart \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }}
+          
+          # Wait for restart to complete
+          sleep 30
+          
+          # Check application logs for startup issues
+          echo "📋 Checking application startup logs..."
+          az webapp log tail \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} || true
           
           # Deploy blue package with retry logic
           for attempt in {1..3}; do
@@ -431,6 +448,18 @@ jobs:
               fi
             fi
           done
+          
+          # Quick health check after deployment
+          echo "🔍 Testing application endpoints..."
+          API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
+          
+          # Test simple status endpoint (no database dependency)
+          echo "Testing /status endpoint..."
+          curl -f -s --max-time 30 "${API_URL}/status" || echo "❌ /status endpoint failed"
+          
+          # Test health endpoint (with database)
+          echo "Testing /health endpoint..."
+          curl -f -s --max-time 30 "${API_URL}/health" || echo "❌ /health endpoint failed"
 
       - name: Wait for Blue startup
         run: |
