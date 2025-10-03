@@ -14,7 +14,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Edit, Delete, Save, Cancel, Add } from '@mui/icons-material';
 
-function Checklist({ checklist, role, department, onChange }) {
+function Checklist({ checklist, role, department, onChange, readOnly = false }) {
   const [editingIndex, setEditingIndex] = useState(-1);
   const [editText, setEditText] = useState('');
   const [newItem, setNewItem] = useState('');
@@ -108,61 +108,67 @@ function Checklist({ checklist, role, department, onChange }) {
             ) : (
               <>
                 <ListItemText primary={typeof item === 'object' ? item.étape : item} />
-                <IconButton onClick={() => startEdit(index, item)} size='small' sx={{ mr: 1 }}>
-                  <Edit />
-                </IconButton>
-                <IconButton onClick={() => deleteItem(index)} size='small' color='error'>
-                  <Delete />
-                </IconButton>
+                {!readOnly && (
+                  <>
+                    <IconButton onClick={() => startEdit(index, item)} size='small' sx={{ mr: 1 }}>
+                      <Edit />
+                    </IconButton>
+                    <IconButton onClick={() => deleteItem(index)} size='small' color='error'>
+                      <Delete />
+                    </IconButton>
+                  </>
+                )}
               </>
             )}
           </ListItem>
         ))}
 
-        {addingNew ? (
-          <ListItem sx={{ px: 0 }}>
-            <ListItemIcon>
-              <CheckCircle color='action' />
-            </ListItemIcon>
-            <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <TextField
-                fullWidth
-                value={newItem}
-                onChange={e => setNewItem(e.target.value)}
-                placeholder='Nouveau élément...'
-                variant='outlined'
-                size='small'
-                onKeyPress={e => {
-                  if (e.key === 'Enter') addNewItem();
-                  if (e.key === 'Escape') cancelAdd();
-                }}
-                autoFocus
+        {!readOnly && (
+          addingNew ? (
+            <ListItem sx={{ px: 0 }}>
+              <ListItemIcon>
+                <CheckCircle color='action' />
+              </ListItemIcon>
+              <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  value={newItem}
+                  onChange={e => setNewItem(e.target.value)}
+                  placeholder='Nouveau élément...'
+                  variant='outlined'
+                  size='small'
+                  onKeyPress={e => {
+                    if (e.key === 'Enter') addNewItem();
+                    if (e.key === 'Escape') cancelAdd();
+                  }}
+                  autoFocus
+                />
+                <IconButton onClick={addNewItem} color='primary' size='small'>
+                  <Save />
+                </IconButton>
+                <IconButton onClick={cancelAdd} size='small'>
+                  <Cancel />
+                </IconButton>
+              </Box>
+            </ListItem>
+          ) : (
+            <ListItem sx={{ px: 0 }}>
+              <ListItemIcon>
+                <Add color='primary' />
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  <Typography
+                    color='primary'
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => setAddingNew(true)}
+                  >
+                    Ajouter un élément
+                  </Typography>
+                }
               />
-              <IconButton onClick={addNewItem} color='primary' size='small'>
-                <Save />
-              </IconButton>
-              <IconButton onClick={cancelAdd} size='small'>
-                <Cancel />
-              </IconButton>
-            </Box>
-          </ListItem>
-        ) : (
-          <ListItem sx={{ px: 0 }}>
-            <ListItemIcon>
-              <Add color='primary' />
-            </ListItemIcon>
-            <ListItemText
-              primary={
-                <Typography
-                  color='primary'
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => setAddingNew(true)}
-                >
-                  Ajouter un élément
-                </Typography>
-              }
-            />
-          </ListItem>
+            </ListItem>
+          )
         )}
       </List>
     </Paper>
