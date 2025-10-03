@@ -384,9 +384,9 @@ jobs:
             --settings \
               NODE_ENV="production" \
               PORT="8080" \
-              DATABASE_SERVER="hr-onboarding-dev-r2x0-server.database.windows.net" \
+              DATABASE_SERVER="hr-onboarding-dev-r2x0-sql.database.windows.net" \
               DATABASE_NAME="hr-onboarding" \
-              DATABASE_USERNAME="hr-admin" \
+              DATABASE_USERNAME="sqladmin" \
               DATABASE_TYPE="mssql"
           
           echo "🔧 Setting secret variables..."
