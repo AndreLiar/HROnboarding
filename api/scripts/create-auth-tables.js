@@ -45,10 +45,10 @@ async function createAuthTables() {
     
     console.log(`👑 Admin users found: ${adminCheck.recordset[0].count}`);
     
-    process.exit(0);
+    return true;
   } catch (error) {
     console.error('❌ Error creating authentication tables:', error.message);
-    process.exit(1);
+    throw error;
   }
 }
 

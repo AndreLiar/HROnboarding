@@ -1,7 +1,7 @@
 const express = require('express');
 const TemplateController = require('../controllers/templateController');
 const { authenticate } = require('../middleware/auth');
-const { requirePermission, requireHROrAdmin } = require('../middleware/rbac');
+const { requirePermission } = require('../middleware/rbac');
 const { PERMISSIONS } = require('../config/permissions');
 
 const router = express.Router();

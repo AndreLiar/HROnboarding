@@ -3,13 +3,12 @@ const { body, validationResult } = require('express-validator');
 const bcrypt = require('bcryptjs');
 const { authenticate } = require('../middleware/auth');
 const { 
-  requirePermission,
   requireUserAccess,
   requireRoleAssignmentPermission,
   requireAdmin,
   requireHROrAdmin 
 } = require('../middleware/rbac');
-const { PERMISSIONS, ROLES } = require('../config/permissions');
+const { ROLES } = require('../config/permissions');
 const AuthService = require('../services/AuthService');
 
 const router = express.Router();
@@ -361,7 +360,7 @@ router.get('/', authenticate, requireHROrAdmin, async (req, res) => {
     
     const pool = await AuthService.getPool();
     
-    let whereConditions = [];
+    const whereConditions = [];
     const params = {};
     
     if (role) {
