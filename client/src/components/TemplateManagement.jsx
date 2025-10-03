@@ -31,7 +31,7 @@ import {
   Visibility,
   Schedule,
   CheckCircle,
-  Draft,
+  Description,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
@@ -259,7 +259,7 @@ const TemplateManagement = () => {
       case 'pending_approval':
         return <Schedule />;
       case 'draft':
-        return <Draft />;
+        return <Description />;
       default:
         return null;
     }
