@@ -305,17 +305,19 @@ jobs:
         run: |
           echo "🔧 Configuring Azure App Service to use Node.js 20.x"
           
-          # Set the platform configuration to use Node.js 20
+          # Force Azure to use Node.js 20.x runtime stack
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --linux-fx-version "NODE|20-lts" || true
+            --linux-fx-version "NODE|20-lts" \
+            --startup-file "npm start"
           
-          # Alternative approach using runtime stack configuration
+          # Configure general settings for Node.js 20
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --startup-file "npm start" || true
+            --use-32bit-worker-process false \
+            --always-on true
 
       - name: Deploy Blue to Azure App Service
         run: |
