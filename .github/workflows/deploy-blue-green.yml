@@ -339,29 +339,34 @@ jobs:
         run: |
           echo "🔧 Configuring Azure App Service to use Node.js 20.x"
           
-          # Step 1: Set runtime stack to Node.js 20 (Linux App Service)
+          # Step 1: Force Node.js 20 using multiple methods
           echo "📋 Setting runtime stack to Node.js 20-lts..."
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
             --linux-fx-version "NODE|20-lts"
           
-          # Wait for configuration to apply
-          sleep 15
+          # Step 2: Set Node.js version via app settings (backup method)
+          echo "⚙️ Setting Node.js version via app settings..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              WEBSITE_NODE_DEFAULT_VERSION="~20" \
+              WEBSITE_NODEJS_DEFAULT_VERSION="~20" \
+              NODE_VERSION="20" \
+              ORYX_NODE_VERSION="20" \
+              WEBSITE_ALWAYS_ON="true"
           
-          # Step 2: Configure startup file only (avoid always-on conflicts)
+          # Step 3: Configure startup file
           echo "🔧 Setting startup configuration..."
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
             --startup-file "npm start"
           
-          # Step 3: Configure always-on separately with app settings (safer approach)
-          echo "⚙️ Configuring always-on via app settings..."
-          az webapp config appsettings set \
-            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
-            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --settings WEBSITE_ALWAYS_ON="true" || true
+          # Wait for configuration to apply
+          sleep 20
           
           echo "✅ Azure App Service configured for Node.js 20.x on Linux"
 
@@ -421,12 +426,9 @@ jobs:
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
             --settings \
-              WEBSITE_NODE_DEFAULT_VERSION="20.x" \
-              WEBSITE_NODEJS_DEFAULT_VERSION="20.x" \
               NPM_CONFIG_PRODUCTION="true" \
               SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
               ENABLE_ORYX_BUILD="true" \
-              ORYX_NODE_VERSION="20.x" \
               ORYX_PLATFORM_NAME="nodejs" \
               ORYX_PLATFORM_VERSION="20"
           
