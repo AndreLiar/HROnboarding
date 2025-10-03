@@ -10,7 +10,8 @@
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "postinstall": "echo '✅ Production dependencies installed successfully for HR Onboarding API'"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
