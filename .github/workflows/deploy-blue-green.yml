@@ -301,6 +301,22 @@ jobs:
             done
           fi
 
+      - name: Configure Azure App Service for Node.js 20
+        run: |
+          echo "🔧 Configuring Azure App Service to use Node.js 20.x"
+          
+          # Set the platform configuration to use Node.js 20
+          az webapp config set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --linux-fx-version "NODE|20-lts" || true
+          
+          # Alternative approach using runtime stack configuration
+          az webapp config set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --startup-file "npm start" || true
+
       - name: Deploy Blue to Azure App Service
         run: |
           echo "🔵 Deploying Blue version to App Service"
@@ -323,9 +339,13 @@ jobs:
               OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
               OPENAI_API_ENDPOINT="https://api.openai.com/v1" \
               WEBSITE_NODE_DEFAULT_VERSION="20.x" \
+              WEBSITE_NODEJS_DEFAULT_VERSION="20.x" \
               NPM_CONFIG_PRODUCTION="true" \
               SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
-              ENABLE_ORYX_BUILD="true" || true
+              ENABLE_ORYX_BUILD="true" \
+              ORYX_NODE_VERSION="20.x" \
+              ORYX_PLATFORM_NAME="nodejs" \
+              ORYX_PLATFORM_VERSION="20" || true
           
           # Restart app to ensure environment variables take effect
           echo "🔄 Restarting app to apply configuration changes"
