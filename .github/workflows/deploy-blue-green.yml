@@ -339,19 +339,35 @@ jobs:
         run: |
           echo "🔧 Configuring Azure App Service to use Node.js 20.x"
           
-          # Force Azure to use Node.js 20.x runtime stack
+          # Step 1: Set runtime stack to Node.js 20
+          echo "📋 Setting runtime stack to Node.js 20-lts..."
           az webapp config set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --linux-fx-version "NODE|20-lts" \
+            --linux-fx-version "NODE|20-lts"
+          
+          # Wait for configuration to apply
+          sleep 10
+          
+          # Step 2: Configure worker process (separate call to avoid conflicts)
+          echo "⚙️ Configuring 64-bit worker process..."
+          az webapp config set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --use-32bit-worker-process false
+          
+          # Wait for configuration to apply
+          sleep 5
+          
+          # Step 3: Configure always-on and startup file
+          echo "🔧 Setting always-on and startup configuration..."
+          az webapp config set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --always-on true \
             --startup-file "npm start"
           
-          # Configure general settings for Node.js 20
-          az webapp config set \
-            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
-            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --use-32bit-worker-process false \
-            --always-on true
+          echo "✅ Azure App Service configured for Node.js 20.x"
 
       - name: Deploy Blue to Azure App Service
         run: |
