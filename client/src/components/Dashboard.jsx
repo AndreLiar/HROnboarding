@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Grid,
   Card,
   CardContent,
   Typography,
   Box,
-  Chip,
   LinearProgress,
   Alert,
   Button,
@@ -20,7 +19,6 @@ import {
   People,
   Approval,
   CheckCircle,
-  Schedule,
   Warning,
   TrendingUp
 } from '@mui/icons-material';
@@ -39,15 +37,10 @@ const Dashboard = ({ onViewChange }) => {
     approvals: { pending: 0, approved: 0, rejected: 0 },
     categories: []
   });
-  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       const promises = [];
@@ -91,7 +84,7 @@ const Dashboard = ({ onViewChange }) => {
 
       results.forEach(result => {
         switch (result.type) {
-          case 'templates':
+          case 'templates': {
             const templates = result.data.templates || [];
             newStats.templates = {
               total: templates.length,
@@ -100,12 +93,14 @@ const Dashboard = ({ onViewChange }) => {
               draft: templates.filter(t => t.status === 'draft').length
             };
             break;
+          }
 
-          case 'categories':
+          case 'categories': {
             newStats.categories = result.data || [];
             break;
+          }
 
-          case 'users':
+          case 'users': {
             const users = result.data.users || [];
             newStats.users = {
               total: users.length,
@@ -113,8 +108,9 @@ const Dashboard = ({ onViewChange }) => {
               pending: users.filter(u => !u.email_verified).length
             };
             break;
+          }
 
-          case 'approvals':
+          case 'approvals': {
             const approvals = result.data.approvalRequests || [];
             newStats.approvals = {
               pending: approvals.filter(a => a.status === 'pending').length,
@@ -122,6 +118,7 @@ const Dashboard = ({ onViewChange }) => {
               rejected: approvals.filter(a => a.status === 'rejected').length
             };
             break;
+          }
         }
       });
 
@@ -133,7 +130,11 @@ const Dashboard = ({ onViewChange }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAdmin, isHRManager, stats]);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const StatCard = ({ title, value, subtitle, color = 'primary', icon, onClick }) => (
     <Card 

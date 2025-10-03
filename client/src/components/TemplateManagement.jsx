@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -15,10 +15,8 @@ import {
   TextField,
   MenuItem,
   Alert,
-  Fab,
   IconButton,
   Menu,
-  Tooltip,
   LinearProgress,
   Tabs,
   Tab
@@ -43,7 +41,7 @@ const API_BASE = import.meta.env.PROD
   : 'http://localhost:3001';
 
 const TemplateManagement = () => {
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,12 +68,7 @@ const TemplateManagement = () => {
     items: []
   });
 
-  useEffect(() => {
-    loadTemplates();
-    loadCategories();
-  }, [selectedCategory, selectedStatus]);
-
-  const loadTemplates = async () => {
+  const loadTemplates = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -97,16 +90,21 @@ const TemplateManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedCategory, selectedStatus]);
 
-  const loadCategories = async () => {
+  const loadCategories = useCallback(async () => {
     try {
       const response = await axios.get(`${API_BASE}/templates/categories`);
       setCategories(response.data || []);
     } catch (err) {
       console.error('Error loading categories:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadTemplates();
+    loadCategories();
+  }, [loadTemplates, loadCategories]);
 
   const loadTemplateDetails = async (templateId) => {
     try {
@@ -169,7 +167,7 @@ const TemplateManagement = () => {
 
   const handleCloneTemplate = async (templateId) => {
     try {
-      const response = await axios.post(`${API_BASE}/templates/${templateId}/clone`);
+      await axios.post(`${API_BASE}/templates/${templateId}/clone`);
       loadTemplates();
       setError('');
     } catch (err) {
@@ -285,7 +283,7 @@ const TemplateManagement = () => {
 
       {/* Filters */}
       <Box sx={{ mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 2 }}>
+        <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }}>
           <Tab label="Tous" onClick={() => setSelectedStatus('all')} />
           <Tab label="Approuvés" onClick={() => setSelectedStatus('approved')} />
           <Tab label="En attente" onClick={() => setSelectedStatus('pending_approval')} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -31,7 +31,6 @@ import {
   Visibility,
   ThumbUp,
   ThumbDown,
-  Send,
   History
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,7 +41,7 @@ const API_BASE = import.meta.env.PROD
   : 'http://localhost:3001';
 
 const ApprovalWorkflow = () => {
-  const { user, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const [approvalRequests, setApprovalRequests] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -59,14 +58,10 @@ const ApprovalWorkflow = () => {
   const [rejectionComments, setRejectionComments] = useState('');
   const [changesRequested, setChangesRequested] = useState('');
 
-  const statusFilters = ['pending', 'approved', 'rejected'];
+  const statusFilters = useMemo(() => ['pending', 'approved', 'rejected'], []);
   const currentFilter = statusFilters[tabValue];
 
-  useEffect(() => {
-    loadApprovalRequests();
-  }, [tabValue]);
-
-  const loadApprovalRequests = async () => {
+  const loadApprovalRequests = useCallback(async () => {
     try {
       setLoading(true);
       const status = statusFilters[tabValue];
@@ -79,7 +74,11 @@ const ApprovalWorkflow = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tabValue, statusFilters]);
+
+  useEffect(() => {
+    loadApprovalRequests();
+  }, [loadApprovalRequests]);
 
   const loadTemplateDetails = async (requestId) => {
     try {
@@ -210,7 +209,7 @@ const ApprovalWorkflow = () => {
       )}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+        <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
           <Tab label="En attente" />
           <Tab label="Approuvés" />
           <Tab label="Rejetés" />

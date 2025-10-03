@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -21,12 +21,6 @@ import {
   LinearProgress,
   Tabs,
   Tab,
-  List,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  ListItemSecondaryAction,
-  Divider
 } from '@mui/material';
 import {
   Add,
@@ -34,7 +28,6 @@ import {
   Delete,
   MoreVert,
   Person,
-  Email,
   Lock,
   LockOpen,
   AdminPanelSettings,
@@ -72,11 +65,7 @@ const UserManagement = () => {
   const roleFilters = ['all', 'admin', 'hr_manager', 'employee'];
   const currentFilter = roleFilters[tabValue];
 
-  useEffect(() => {
-    loadUsers();
-  }, [tabValue]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -94,7 +83,11 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentFilter]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   const handleCreateUser = async () => {
     try {
@@ -259,7 +252,7 @@ const UserManagement = () => {
 
       {/* Role Filter Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+        <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)}>
           <Tab label="Tous" />
           <Tab label="Administrateurs" />
           <Tab label="RH Managers" />
