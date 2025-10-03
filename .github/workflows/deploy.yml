@@ -1,5 +1,9 @@
 name: Deploy HR Onboarding Application
 
+permissions:
+  contents: read
+  actions: write
+
 on:
   push:
     branches:
@@ -420,7 +424,12 @@ jobs:
     needs: [setup, health-check]
     runs-on: ubuntu-latest
     if: success()
+    permissions:
+      actions: write
+      contents: read
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Trigger Blue-Green Deployment
         uses: actions/github-script@v7
         with:
