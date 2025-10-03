@@ -455,23 +455,42 @@ jobs:
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} || true
           
-          # Deploy blue package with retry logic
-          for attempt in {1..3}; do
-            echo "🔄 Deployment attempt $attempt/3"
+          # Deploy blue package with retry logic and extended timeout
+          for attempt in {1..5}; do
+            echo "🔄 Deployment attempt $attempt/5"
             
-            if az webapp deploy \
+            # Clear any existing deployment locks
+            echo "🔧 Clearing deployment locks..."
+            az webapp deployment list-publishing-credentials \
+              --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+              --name ${{ needs.version-and-setup.outputs.webapp-name }} > /dev/null 2>&1 || true
+            
+            # Wait before deployment attempt
+            if [[ $attempt -gt 1 ]]; then
+              echo "⏳ Waiting 90 seconds before retry..."
+              sleep 90
+            fi
+            
+            if timeout 600 az webapp deploy \
               --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
               --name ${{ needs.version-and-setup.outputs.webapp-name }} \
               --src-path ./api-blue-deployment.zip \
-              --type zip; then
+              --type zip \
+              --timeout 600; then
               echo "✅ Blue deployment completed successfully"
               break
             else
               echo "❌ Deployment attempt $attempt failed"
-              if [[ $attempt -lt 3 ]]; then
-                echo "⏳ Waiting 60 seconds before retry..."
-                sleep 60
-              else
+              
+              # Check deployment status
+              echo "🔍 Checking deployment status..."
+              az webapp deployment list \
+                --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+                --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+                --query "[0].{status:status, message:message}" \
+                --output table || true
+              
+              if [[ $attempt -eq 5 ]]; then
                 echo "🚨 All deployment attempts failed"
                 exit 1
               fi
