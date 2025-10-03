@@ -370,6 +370,32 @@ jobs:
           echo "🔵 Deploying Blue version to App Service"
           
           # Configure blue environment variables with application settings (using GitHub Secrets)
+          # Split into smaller chunks to avoid Azure CLI limits
+          
+          echo "🔧 Setting core application variables..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              NODE_ENV="production" \
+              PORT="8080" \
+              DATABASE_SERVER="hr-onboarding-dev-r2x0-server.database.windows.net" \
+              DATABASE_NAME="hr-onboarding" \
+              DATABASE_USERNAME="hr-admin" \
+              DATABASE_TYPE="mssql"
+          
+          echo "🔧 Setting secret variables..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
+              DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
+              EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}"
+          
+          echo "🔧 Setting deployment tracking variables..."
           az webapp config appsettings set \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
@@ -377,23 +403,24 @@ jobs:
               DEPLOYMENT_ID="${{ needs.version-and-setup.outputs.deployment-id }}" \
               DEPLOYMENT_VERSION="${{ steps.deploy.outputs.blue-version }}" \
               DEPLOYMENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-              ACTIVE_VERSION="blue" \
-              NODE_ENV="production" \
-              PORT="8080" \
-              DATABASE_SERVER="hr-onboarding-dev-r2x0-server.database.windows.net" \
-              DATABASE_NAME="hr-onboarding" \
-              DATABASE_USERNAME="hr-admin" \
-              DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
-              DATABASE_TYPE="mssql" \
-              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              ACTIVE_VERSION="blue"
+          
+          echo "🔧 Setting email and auth configuration..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
               OPENAI_API_ENDPOINT="https://api.openai.com/v1" \
-              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
               JWT_EXPIRY="7d" \
               BCRYPT_SALT_ROUNDS="12" \
               EMAIL_HOST="smtp.gmail.com" \
-              EMAIL_PORT="587" \
-              EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
-              EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
+              EMAIL_PORT="587"
+          
+          echo "🔧 Setting Azure build configuration..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} \
+            --settings \
               WEBSITE_NODE_DEFAULT_VERSION="20.x" \
               WEBSITE_NODEJS_DEFAULT_VERSION="20.x" \
               NPM_CONFIG_PRODUCTION="true" \
@@ -401,14 +428,14 @@ jobs:
               ENABLE_ORYX_BUILD="true" \
               ORYX_NODE_VERSION="20.x" \
               ORYX_PLATFORM_NAME="nodejs" \
-              ORYX_PLATFORM_VERSION="20" || true
+              ORYX_PLATFORM_VERSION="20"
           
           # Debug: Check what environment variables were actually set
-          echo "🔍 Verifying environment variables were set..."
+          echo "🔍 Verifying critical environment variables were set..."
           az webapp config appsettings list \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
-            --query "[?name=='NODE_ENV' || name=='PORT' || name=='DATABASE_SERVER' || name=='JWT_SECRET'].{name:name, value:value}" \
+            --query "[?name=='NODE_ENV' || name=='PORT' || name=='DATABASE_SERVER' || name=='DATABASE_PASSWORD' || name=='JWT_SECRET' || name=='OPENAI_API_KEY'].{name:name, value:value}" \
             --output table
           
           # Restart app to ensure environment variables take effect
