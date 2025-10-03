@@ -16,6 +16,14 @@ const { generalLimiter, securityHeaders } = require('./middleware/auth');
 // Import routes
 const routes = require('./routes');
 
+// Environment validation
+console.log('🔍 Environment validation:');
+console.log('- NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('- PORT:', process.env.PORT || 'not set');
+console.log('- DATABASE_SERVER:', process.env.DATABASE_SERVER ? 'set' : 'not set');
+console.log('- DATABASE_NAME:', process.env.DATABASE_NAME ? 'set' : 'not set');
+console.log('- OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'set' : 'not set');
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -76,18 +84,39 @@ app.use(
 app.use('/', routes);
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 HR Onboarding API running on port ${PORT}`);
   console.log(`📊 Health check: http://0.0.0.0:${PORT}/health`);
   console.log(`📚 API Documentation: http://0.0.0.0:${PORT}/api-docs`);
   console.log(`✅ Server started successfully`);
 
-  // Initialize database in background (non-blocking)
+  // Initialize database in background (non-blocking) with longer delay for Azure startup
   setTimeout(() => {
-    DatabaseService.initializeDatabase().catch(err => {
-      console.error('Database initialization failed:', err.message);
-    });
-  }, 1000);
+    console.log('🔄 Starting database initialization...');
+    DatabaseService.initializeDatabase()
+      .then(() => {
+        console.log('✅ Database initialized successfully');
+      })
+      .catch(err => {
+        console.error('❌ Database initialization failed:', err.message);
+        console.log('🔄 App continues without database functionality');
+      });
+  }, 5000); // Increased delay for Azure startup
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Process terminated');
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('✅ Process terminated');
+  });
 });
 
 module.exports = app;
