@@ -415,6 +415,39 @@ jobs:
           fi
           echo "Frontend health check passed"
 
+  # Trigger Blue-Green Deployment on Success
+  trigger-blue-green:
+    needs: [setup, health-check]
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Trigger Blue-Green Deployment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            console.log('✅ Basic deployment completed successfully');
+            console.log('🔵 Triggering blue-green deployment workflow...');
+            
+            const environment = '${{ github.ref }}' === 'refs/heads/main' ? 'production' :
+                               '${{ github.ref }}' === 'refs/heads/staging' ? 'staging' : 'dev';
+            
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: 'deploy-blue-green.yml',
+                ref: '${{ github.ref_name }}',
+                inputs: {
+                  environment: environment
+                }
+              });
+              console.log(`🚀 Blue-green deployment triggered for environment: ${environment}`);
+            } catch (error) {
+              console.log(`❌ Failed to trigger blue-green deployment: ${error.message}`);
+              throw error;
+            }
+
   # Create GitHub Release (only for production)
   create-release:
     needs: [setup, health-check]

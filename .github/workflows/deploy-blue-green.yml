@@ -6,14 +6,6 @@ concurrency:
   cancel-in-progress: false
 
 on:
-  workflow_run:
-    workflows: ["Deploy HR Onboarding Application"]
-    types: 
-      - completed
-    branches:
-      - main      # Production deployment
-      - staging   # Staging deployment
-      - dev       # Development deployment
   workflow_dispatch:
     inputs:
       environment:
@@ -32,26 +24,17 @@ env:
   AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
 
 jobs:
-  # Check if prerequisite deployment succeeded
+  # Check deployment readiness
   check-prerequisite:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
     outputs:
       should-run: ${{ steps.check.outputs.result }}
     steps:
-      - name: Check workflow trigger
+      - name: Check deployment readiness
         id: check
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "✅ Manual trigger - blue-green deployment will run"
-          elif [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
-            echo "result=true" >> $GITHUB_OUTPUT
-            echo "✅ Basic deployment succeeded - proceeding with blue-green deployment"
-          else
-            echo "result=false" >> $GITHUB_OUTPUT
-            echo "❌ Basic deployment failed - skipping blue-green deployment"
-          fi
+          echo "result=true" >> $GITHUB_OUTPUT
+          echo "✅ Blue-green deployment triggered - proceeding with deployment"
 
   # Generate semantic version and setup
   version-and-setup:
