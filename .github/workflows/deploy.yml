@@ -1,15 +1,19 @@
 name: Deploy HR Onboarding Application
 
 on:
-  push:
-    branches:
-      - main      # Production deployment
-      - staging   # Staging deployment
-      - dev       # Development deployment
-  pull_request:
-    branches:
-      - main
-      - staging
+  # Disabled to prevent conflicts with blue-green deployment
+  # Use deploy-blue-green.yml for all deployments
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment (dev, staging, production)'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
 
 env:
   NODE_VERSION: '20'

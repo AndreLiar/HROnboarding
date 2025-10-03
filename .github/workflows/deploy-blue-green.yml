@@ -2,7 +2,7 @@ name: Blue/Green Deployment with Zero Cost Strategy
 
 # Prevent concurrent deployments to avoid conflicts
 concurrency:
-  group: deployment-${{ github.ref }}
+  group: deployment-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: false
 
 on:
@@ -264,11 +264,19 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Check for ongoing deployments
+      - name: Check for ongoing deployments and conflicts
         run: |
-          echo "🔍 Checking for ongoing deployments"
+          echo "🔍 Checking for ongoing deployments and resolving conflicts"
           
-          # Check deployment status
+          # Wait for any ongoing GitHub Actions workflows to complete
+          echo "🔄 Checking for concurrent GitHub Actions workflows..."
+          WORKFLOW_RUNS=$(gh run list --workflow="deploy.yml" --status="in_progress" --limit=10 --json=id || echo "[]")
+          if [[ "$WORKFLOW_RUNS" != "[]" && "$WORKFLOW_RUNS" != "" ]]; then
+            echo "⏳ Waiting for concurrent deploy.yml workflows to complete..."
+            sleep 30
+          fi
+          
+          # Check Azure deployment status with enhanced conflict handling
           DEPLOYMENT_STATUS=$(az webapp deployment list \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
             --name ${{ needs.version-and-setup.outputs.webapp-name }} \
@@ -280,23 +288,32 @@ jobs:
           # If there's an ongoing deployment, wait for it to complete
           if [[ "$DEPLOYMENT_STATUS" == "Running" || "$DEPLOYMENT_STATUS" == "Building" ]]; then
             echo "⏳ Waiting for ongoing deployment to complete..."
-            for i in {1..30}; do
-              sleep 10
+            for i in {1..60}; do
+              sleep 15
               DEPLOYMENT_STATUS=$(az webapp deployment list \
                 --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
                 --name ${{ needs.version-and-setup.outputs.webapp-name }} \
                 --query "[0].status" \
                 --output tsv 2>/dev/null || echo "None")
               
-              echo "Deployment status check $i/30: $DEPLOYMENT_STATUS"
+              echo "Deployment status check $i/60: $DEPLOYMENT_STATUS"
               
               if [[ "$DEPLOYMENT_STATUS" != "Running" && "$DEPLOYMENT_STATUS" != "Building" ]]; then
                 echo "✅ Previous deployment completed"
                 break
               fi
               
-              if [[ $i -eq 30 ]]; then
-                echo "⚠️ Timeout waiting for deployment to complete, proceeding anyway"
+              if [[ $i -eq 60 ]]; then
+                echo "⚠️ Timeout waiting for deployment to complete, attempting to proceed"
+                # Try to stop any conflicting operations
+                az webapp stop \
+                  --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+                  --name ${{ needs.version-and-setup.outputs.webapp-name }} || true
+                sleep 10
+                az webapp start \
+                  --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
+                  --name ${{ needs.version-and-setup.outputs.webapp-name }} || true
+                sleep 10
               fi
             done
           fi
