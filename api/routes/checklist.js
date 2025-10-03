@@ -41,8 +41,9 @@ const router = express.Router();
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/generate', 
-  authenticate, 
+router.post(
+  '/generate',
+  authenticate,
   requirePermission(PERMISSIONS.CHECKLISTS_CREATE),
   ChecklistController.generateChecklist
 );
@@ -90,11 +91,7 @@ router.post('/generate',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/share', 
-  authenticate, 
-  requireHROrAdmin,
-  ChecklistController.shareChecklist
-);
+router.post('/share', authenticate, requireHROrAdmin, ChecklistController.shareChecklist);
 
 /**
  * @swagger
@@ -115,7 +112,8 @@ router.post('/share',
  *       404:
  *         description: Checklist not found
  */
-router.get('/c/:slug', 
+router.get(
+  '/c/:slug',
   optionalAuth, // Optional auth to track who's viewing
   ChecklistController.getSharedChecklist
 );

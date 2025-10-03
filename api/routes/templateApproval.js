@@ -75,7 +75,8 @@ const router = express.Router();
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/requests',
+router.get(
+  '/requests',
   authenticate,
   requireHROrAdmin,
   TemplateApprovalController.getApprovalRequests
@@ -107,7 +108,8 @@ router.get('/requests',
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/requests/:id',
+router.get(
+  '/requests/:id',
   authenticate,
   requireHROrAdmin,
   TemplateApprovalController.getApprovalRequestDetails
@@ -151,7 +153,8 @@ router.get('/requests/:id',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/templates/:id/submit',
+router.post(
+  '/templates/:id/submit',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_EDIT),
   TemplateApprovalController.submitForApproval
@@ -193,7 +196,8 @@ router.post('/templates/:id/submit',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/requests/:id/approve',
+router.post(
+  '/requests/:id/approve',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_APPROVE),
   TemplateApprovalController.approveTemplate
@@ -238,7 +242,8 @@ router.post('/requests/:id/approve',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/requests/:id/reject',
+router.post(
+  '/requests/:id/reject',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_APPROVE),
   TemplateApprovalController.rejectTemplate
@@ -268,7 +273,8 @@ router.post('/requests/:id/reject',
  *       403:
  *         description: Insufficient permissions
  */
-router.get('/templates/:templateId/history',
+router.get(
+  '/templates/:templateId/history',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_VIEW),
   TemplateApprovalController.getTemplateApprovalHistory

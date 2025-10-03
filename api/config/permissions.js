@@ -3,8 +3,8 @@
 
 const ROLES = {
   ADMIN: 'admin',
-  HR_MANAGER: 'hr_manager', 
-  EMPLOYEE: 'employee'
+  HR_MANAGER: 'hr_manager',
+  EMPLOYEE: 'employee',
 };
 
 const PERMISSIONS = {
@@ -50,7 +50,7 @@ const PERMISSIONS = {
   SESSIONS_VIEW_ALL: 'sessions:view:all',
   SESSIONS_VIEW_OWN: 'sessions:view:own',
   SESSIONS_TERMINATE_ALL: 'sessions:terminate:all',
-  SESSIONS_TERMINATE_OWN: 'sessions:terminate:own'
+  SESSIONS_TERMINATE_OWN: 'sessions:terminate:own',
 };
 
 // Role Permission Mappings
@@ -64,7 +64,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.USERS_UPDATE_OWN,
     PERMISSIONS.USERS_DELETE,
     PERMISSIONS.USERS_ASSIGN_ROLES,
-    
+
     PERMISSIONS.CHECKLISTS_CREATE,
     PERMISSIONS.CHECKLISTS_READ_ALL,
     PERMISSIONS.CHECKLISTS_READ_OWN,
@@ -73,7 +73,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.CHECKLISTS_DELETE_ALL,
     PERMISSIONS.CHECKLISTS_DELETE_OWN,
     PERMISSIONS.CHECKLISTS_ASSIGN,
-    
+
     PERMISSIONS.TEMPLATES_CREATE,
     PERMISSIONS.TEMPLATES_VIEW,
     PERMISSIONS.TEMPLATES_READ,
@@ -81,19 +81,19 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.TEMPLATES_DELETE,
     PERMISSIONS.TEMPLATES_APPROVE,
     PERMISSIONS.TEMPLATES_CLONE,
-    
+
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.REPORTS_GENERATE,
     PERMISSIONS.REPORTS_EXPORT,
-    
+
     PERMISSIONS.SYSTEM_SETTINGS,
     PERMISSIONS.SYSTEM_LOGS,
     PERMISSIONS.SYSTEM_BACKUP,
-    
+
     PERMISSIONS.SESSIONS_VIEW_ALL,
     PERMISSIONS.SESSIONS_VIEW_OWN,
     PERMISSIONS.SESSIONS_TERMINATE_ALL,
-    PERMISSIONS.SESSIONS_TERMINATE_OWN
+    PERMISSIONS.SESSIONS_TERMINATE_OWN,
   ],
 
   [ROLES.HR_MANAGER]: [
@@ -103,7 +103,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.USERS_READ_OWN,
     PERMISSIONS.USERS_UPDATE_ALL,
     PERMISSIONS.USERS_UPDATE_OWN,
-    
+
     PERMISSIONS.CHECKLISTS_CREATE,
     PERMISSIONS.CHECKLISTS_READ_ALL,
     PERMISSIONS.CHECKLISTS_READ_OWN,
@@ -112,7 +112,7 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.CHECKLISTS_DELETE_ALL,
     PERMISSIONS.CHECKLISTS_DELETE_OWN,
     PERMISSIONS.CHECKLISTS_ASSIGN,
-    
+
     PERMISSIONS.TEMPLATES_CREATE,
     PERMISSIONS.TEMPLATES_VIEW,
     PERMISSIONS.TEMPLATES_READ,
@@ -120,39 +120,39 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.TEMPLATES_DELETE,
     PERMISSIONS.TEMPLATES_APPROVE,
     PERMISSIONS.TEMPLATES_CLONE,
-    
+
     PERMISSIONS.ANALYTICS_VIEW,
     PERMISSIONS.REPORTS_GENERATE,
     PERMISSIONS.REPORTS_EXPORT,
-    
+
     PERMISSIONS.SESSIONS_VIEW_OWN,
-    PERMISSIONS.SESSIONS_TERMINATE_OWN
+    PERMISSIONS.SESSIONS_TERMINATE_OWN,
   ],
 
   [ROLES.EMPLOYEE]: [
     // Self-service and assigned tasks only
     PERMISSIONS.USERS_READ_OWN,
     PERMISSIONS.USERS_UPDATE_OWN,
-    
+
     PERMISSIONS.CHECKLISTS_READ_OWN,
     PERMISSIONS.CHECKLISTS_UPDATE_OWN,
-    
+
     PERMISSIONS.TEMPLATES_VIEW,
     PERMISSIONS.TEMPLATES_READ,
-    
+
     PERMISSIONS.SESSIONS_VIEW_OWN,
-    PERMISSIONS.SESSIONS_TERMINATE_OWN
-  ]
+    PERMISSIONS.SESSIONS_TERMINATE_OWN,
+  ],
 };
 
 // Resource Access Patterns
 const RESOURCE_ACCESS = {
-  PUBLIC: 'public',        // No authentication required
+  PUBLIC: 'public', // No authentication required
   AUTHENTICATED: 'authenticated', // Any authenticated user
-  OWNER_ONLY: 'owner',     // Resource owner only
+  OWNER_ONLY: 'owner', // Resource owner only
   SAME_DEPARTMENT: 'department', // Same department users
   HR_AND_ABOVE: 'hr_plus', // HR Manager and Admin
-  ADMIN_ONLY: 'admin'      // Admin only
+  ADMIN_ONLY: 'admin', // Admin only
 };
 
 // Department-based access (for future multi-tenancy)
@@ -160,16 +160,16 @@ const DEPARTMENT_PERMISSIONS = {
   HR: {
     canViewAllEmployees: true,
     canCreateChecklists: true,
-    canAssignTasks: true
+    canAssignTasks: true,
   },
   IT: {
     canViewTechChecklists: true,
-    canManageAccounts: true
+    canManageAccounts: true,
   },
   FINANCE: {
     canViewBudgetData: true,
-    canProcessPayroll: true
-  }
+    canProcessPayroll: true,
+  },
 };
 
 /**
@@ -191,28 +191,33 @@ function hasPermission(userRole, permission) {
  * @param {string} accessType - Type of access required
  * @returns {boolean} - Whether user can access resource
  */
-function canAccessResource(user, resourceType, resource = null, accessType = RESOURCE_ACCESS.AUTHENTICATED) {
+function canAccessResource(
+  user,
+  resourceType,
+  resource = null,
+  accessType = RESOURCE_ACCESS.AUTHENTICATED
+) {
   if (!user) return accessType === RESOURCE_ACCESS.PUBLIC;
-  
+
   switch (accessType) {
     case RESOURCE_ACCESS.PUBLIC:
       return true;
-      
+
     case RESOURCE_ACCESS.AUTHENTICATED:
       return !!user.id;
-      
+
     case RESOURCE_ACCESS.OWNER_ONLY:
       return resource && (resource.user_id === user.id || resource.created_by === user.id);
-      
+
     case RESOURCE_ACCESS.SAME_DEPARTMENT:
       return resource && resource.department === user.department;
-      
+
     case RESOURCE_ACCESS.HR_AND_ABOVE:
       return user.role === ROLES.HR_MANAGER || user.role === ROLES.ADMIN;
-      
+
     case RESOURCE_ACCESS.ADMIN_ONLY:
       return user.role === ROLES.ADMIN;
-      
+
     default:
       return false;
   }
@@ -230,16 +235,16 @@ function getRolePermissions(role) {
 /**
  * Check if role has higher or equal privileges than another role
  * @param {string} role1 - First role
- * @param {string} role2 - Second role  
+ * @param {string} role2 - Second role
  * @returns {boolean} - Whether role1 >= role2 in hierarchy
  */
 function isRoleHigherOrEqual(role1, role2) {
   const hierarchy = {
     [ROLES.EMPLOYEE]: 1,
     [ROLES.HR_MANAGER]: 2,
-    [ROLES.ADMIN]: 3
+    [ROLES.ADMIN]: 3,
   };
-  
+
   return (hierarchy[role1] || 0) >= (hierarchy[role2] || 0);
 }
 
@@ -254,12 +259,12 @@ function canAssignRole(assignerRole, targetRole) {
   if (targetRole === ROLES.ADMIN) {
     return assignerRole === ROLES.ADMIN;
   }
-  
+
   // HR managers and admins can assign HR manager and employee roles
   if (targetRole === ROLES.HR_MANAGER || targetRole === ROLES.EMPLOYEE) {
     return assignerRole === ROLES.HR_MANAGER || assignerRole === ROLES.ADMIN;
   }
-  
+
   return false;
 }
 
@@ -273,5 +278,5 @@ module.exports = {
   canAccessResource,
   getRolePermissions,
   isRoleHigherOrEqual,
-  canAssignRole
+  canAssignRole,
 };

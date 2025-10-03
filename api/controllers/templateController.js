@@ -7,31 +7,32 @@ class TemplateController {
    */
   static async getAllTemplates(req, res) {
     try {
-      const { 
-        category, 
-        status = 'approved', 
-        search, 
-        page = 1, 
+      const {
+        category,
+        status = 'approved',
+        search,
+        page = 1,
         limit = 10,
         sortBy = 'updated_at',
-        sortOrder = 'DESC'
+        sortOrder = 'DESC',
       } = req.query;
 
       const offset = (page - 1) * limit;
-      
-      let whereClause = "WHERE ct.status = @status";
+
+      let whereClause = 'WHERE ct.status = @status';
       const request = new sql.Request();
       request.input('status', status);
       request.input('limit', parseInt(limit));
       request.input('offset', parseInt(offset));
 
       if (category) {
-        whereClause += " AND ct.category = @category";
+        whereClause += ' AND ct.category = @category';
         request.input('category', category);
       }
 
       if (search) {
-        whereClause += " AND (ct.name LIKE @search OR ct.description LIKE @search OR ct.tags LIKE @search)";
+        whereClause +=
+          ' AND (ct.name LIKE @search OR ct.description LIKE @search OR ct.tags LIKE @search)';
         request.input('search', `%${search}%`);
       }
 
@@ -68,15 +69,14 @@ class TemplateController {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
-
     } catch (error) {
       console.error('Error fetching templates:', error);
       res.status(500).json({
         error: 'Failed to fetch templates',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -109,7 +109,7 @@ class TemplateController {
       `;
 
       const templateResult = await request.query(templateQuery);
-      
+
       if (templateResult.recordset.length === 0) {
         return res.status(404).json({ error: 'Template not found' });
       }
@@ -123,18 +123,17 @@ class TemplateController {
           WHERE template_id = @templateId 
           ORDER BY sort_order ASC
         `;
-        
+
         const itemsResult = await request.query(itemsQuery);
         template.items = itemsResult.recordset;
       }
 
       res.json(template);
-
     } catch (error) {
       console.error('Error fetching template:', error);
       res.status(500).json({
         error: 'Failed to fetch template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -154,14 +153,14 @@ class TemplateController {
         target_roles,
         target_departments,
         compliance_frameworks,
-        items = []
+        items = [],
       } = req.body;
 
       const userId = req.user.id;
       const templateId = uuidv4();
 
       const request = new sql.Request();
-      
+
       // Create template
       await request
         .input('id', templateId)
@@ -174,8 +173,7 @@ class TemplateController {
         .input('target_roles', target_roles || null)
         .input('target_departments', target_departments || null)
         .input('compliance_frameworks', compliance_frameworks || null)
-        .input('created_by', userId)
-        .query(`
+        .input('created_by', userId).query(`
           INSERT INTO ChecklistTemplates (
             id, name, description, category, template_data, tags,
             estimated_duration_minutes, target_roles, target_departments,
@@ -206,8 +204,7 @@ class TemplateController {
             .input(`item_instructions_${i}`, item.instructions || null)
             .input(`item_success_criteria_${i}`, item.success_criteria || null)
             .input(`item_attachments_required_${i}`, item.attachments_required || false)
-            .input(`item_approval_required_${i}`, item.approval_required || false)
-            .query(`
+            .input(`item_approval_required_${i}`, item.approval_required || false).query(`
               INSERT INTO TemplateItems (
                 id, template_id, title, description, category, is_required,
                 estimated_duration_minutes, sort_order, dependencies, assignee_role,
@@ -227,14 +224,13 @@ class TemplateController {
       res.status(201).json({
         message: 'Template created successfully',
         templateId,
-        status: 'draft'
+        status: 'draft',
       });
-
     } catch (error) {
       console.error('Error creating template:', error);
       res.status(500).json({
         error: 'Failed to create template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -254,13 +250,13 @@ class TemplateController {
         estimated_duration_minutes,
         target_roles,
         target_departments,
-        compliance_frameworks
+        compliance_frameworks,
       } = req.body;
 
       const userId = req.user.id;
 
       const request = new sql.Request();
-      
+
       // Check if template exists and user has permission
       const existingTemplate = await request
         .input('templateId', id)
@@ -273,8 +269,7 @@ class TemplateController {
       const template = existingTemplate.recordset[0];
 
       // Check permissions (owner, admin, or hr_manager)
-      if (template.created_by !== userId && 
-          !['admin', 'hr_manager'].includes(req.user.role)) {
+      if (template.created_by !== userId && !['admin', 'hr_manager'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Insufficient permissions to update this template' });
       }
 
@@ -285,8 +280,7 @@ class TemplateController {
         .input('templateData', template.template_data)
         .input('templateName', template.name)
         .input('templateDescription', template.description)
-        .input('changedBy', userId)
-        .query(`
+        .input('changedBy', userId).query(`
           INSERT INTO TemplateVersionHistory (
             id, template_id, version_number, name, description, 
             template_data, created_by
@@ -303,12 +297,24 @@ class TemplateController {
         .input('newCategory', category || template.category)
         .input('newTemplateData', template_data || template.template_data)
         .input('newTags', tags !== undefined ? tags : template.tags)
-        .input('newEstimatedDuration', estimated_duration_minutes !== undefined ? estimated_duration_minutes : template.estimated_duration_minutes)
+        .input(
+          'newEstimatedDuration',
+          estimated_duration_minutes !== undefined
+            ? estimated_duration_minutes
+            : template.estimated_duration_minutes
+        )
         .input('newTargetRoles', target_roles !== undefined ? target_roles : template.target_roles)
-        .input('newTargetDepartments', target_departments !== undefined ? target_departments : template.target_departments)
-        .input('newComplianceFrameworks', compliance_frameworks !== undefined ? compliance_frameworks : template.compliance_frameworks)
-        .input('newVersion', template.version + 1)
-        .query(`
+        .input(
+          'newTargetDepartments',
+          target_departments !== undefined ? target_departments : template.target_departments
+        )
+        .input(
+          'newComplianceFrameworks',
+          compliance_frameworks !== undefined
+            ? compliance_frameworks
+            : template.compliance_frameworks
+        )
+        .input('newVersion', template.version + 1).query(`
           UPDATE ChecklistTemplates SET
             name = @newName,
             description = @newDescription,
@@ -327,14 +333,13 @@ class TemplateController {
       res.json({
         message: 'Template updated successfully',
         version: template.version + 1,
-        status: 'draft'
+        status: 'draft',
       });
-
     } catch (error) {
       console.error('Error updating template:', error);
       res.status(500).json({
         error: 'Failed to update template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -351,8 +356,9 @@ class TemplateController {
       request.input('templateId', id);
 
       // Check if template exists and user has permission
-      const existingTemplate = await request
-        .query('SELECT * FROM ChecklistTemplates WHERE id = @templateId');
+      const existingTemplate = await request.query(
+        'SELECT * FROM ChecklistTemplates WHERE id = @templateId'
+      );
 
       if (existingTemplate.recordset.length === 0) {
         return res.status(404).json({ error: 'Template not found' });
@@ -361,18 +367,18 @@ class TemplateController {
       const template = existingTemplate.recordset[0];
 
       // Check permissions (owner, admin, or hr_manager)
-      if (template.created_by !== userId && 
-          !['admin', 'hr_manager'].includes(req.user.role)) {
+      if (template.created_by !== userId && !['admin', 'hr_manager'].includes(req.user.role)) {
         return res.status(403).json({ error: 'Insufficient permissions to delete this template' });
       }
 
       // Check if template is being used
-      const usageCheck = await request
-        .query('SELECT COUNT(*) as count FROM TemplateUsage WHERE template_id = @templateId');
+      const usageCheck = await request.query(
+        'SELECT COUNT(*) as count FROM TemplateUsage WHERE template_id = @templateId'
+      );
 
       if (usageCheck.recordset[0].count > 0) {
-        return res.status(400).json({ 
-          error: 'Cannot delete template that has been used. Consider archiving instead.' 
+        return res.status(400).json({
+          error: 'Cannot delete template that has been used. Consider archiving instead.',
         });
       }
 
@@ -380,12 +386,11 @@ class TemplateController {
       await request.query('DELETE FROM ChecklistTemplates WHERE id = @templateId');
 
       res.json({ message: 'Template deleted successfully' });
-
     } catch (error) {
       console.error('Error deleting template:', error);
       res.status(500).json({
         error: 'Failed to delete template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -417,12 +422,11 @@ class TemplateController {
       `);
 
       res.json(result.recordset);
-
     } catch (error) {
       console.error('Error fetching categories:', error);
       res.status(500).json({
         error: 'Failed to fetch categories',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -455,8 +459,7 @@ class TemplateController {
       await request
         .input('newTemplateId', newTemplateId)
         .input('newName', name || `${template.name} (Copy)`)
-        .input('createdBy', userId)
-        .query(`
+        .input('createdBy', userId).query(`
           INSERT INTO ChecklistTemplates (
             id, name, description, category, template_data, tags,
             estimated_duration_minutes, target_roles, target_departments,
@@ -490,14 +493,13 @@ class TemplateController {
       res.status(201).json({
         message: 'Template cloned successfully',
         templateId: newTemplateId,
-        name: name || `${template.name} (Copy)`
+        name: name || `${template.name} (Copy)`,
       });
-
     } catch (error) {
       console.error('Error cloning template:', error);
       res.status(500).json({
         error: 'Failed to clone template',
-        details: error.message
+        details: error.message,
       });
     }
   }

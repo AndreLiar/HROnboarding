@@ -21,8 +21,8 @@ class AuthService {
         password: process.env.DATABASE_PASSWORD,
         options: {
           encrypt: true,
-          trustServerCertificate: false
-        }
+          trustServerCertificate: false,
+        },
       });
     } catch (error) {
       console.error('Database connection error:', error);

@@ -1,11 +1,11 @@
-const { 
-  ROLES, 
-  PERMISSIONS, 
+const {
+  ROLES,
+  PERMISSIONS,
   RESOURCE_ACCESS,
-  hasPermission, 
-  canAccessResource, 
+  hasPermission,
+  canAccessResource,
   isRoleHigherOrEqual,
-  canAssignRole 
+  canAssignRole,
 } = require('../config/permissions');
 
 /**
@@ -18,11 +18,13 @@ const requirePermission = (requiredPermissions, logic = 'OR') => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
-    const permissions = Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions];
+    const permissions = Array.isArray(requiredPermissions)
+      ? requiredPermissions
+      : [requiredPermissions];
     const userRole = req.user.role;
 
     let hasAccess;
@@ -38,7 +40,7 @@ const requirePermission = (requiredPermissions, logic = 'OR') => {
         code: 'INSUFFICIENT_PERMISSIONS',
         required: permissions,
         userRole: userRole,
-        logic: logic
+        logic: logic,
       });
     }
 
@@ -52,18 +54,22 @@ const requirePermission = (requiredPermissions, logic = 'OR') => {
  * @param {string} accessType - Type of access required
  * @param {Function} resourceGetter - Function to get resource (optional)
  */
-const requireResourceAccess = (resourceType, accessType = RESOURCE_ACCESS.AUTHENTICATED, resourceGetter = null) => {
+const requireResourceAccess = (
+  resourceType,
+  accessType = RESOURCE_ACCESS.AUTHENTICATED,
+  resourceGetter = null
+) => {
   return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
     try {
       let resource = null;
-      
+
       // Get resource if getter function provided
       if (resourceGetter && typeof resourceGetter === 'function') {
         resource = await resourceGetter(req);
@@ -77,7 +83,7 @@ const requireResourceAccess = (resourceType, accessType = RESOURCE_ACCESS.AUTHEN
           code: 'RESOURCE_ACCESS_DENIED',
           resourceType: resourceType,
           accessType: accessType,
-          userRole: req.user.role
+          userRole: req.user.role,
         });
       }
 
@@ -91,7 +97,7 @@ const requireResourceAccess = (resourceType, accessType = RESOURCE_ACCESS.AUTHEN
       return res.status(500).json({
         error: 'Error checking resource access',
         code: 'RESOURCE_ACCESS_ERROR',
-        details: error.message
+        details: error.message,
       });
     }
   };
@@ -101,12 +107,12 @@ const requireResourceAccess = (resourceType, accessType = RESOURCE_ACCESS.AUTHEN
  * Middleware to check if user can perform action on another user
  * @param {string} action - Action being performed ('view', 'edit', 'delete', 'assign_role')
  */
-const requireUserAccess = (action) => {
+const requireUserAccess = action => {
   return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
@@ -147,7 +153,7 @@ const requireUserAccess = (action) => {
       default:
         return res.status(400).json({
           error: 'Invalid action specified',
-          code: 'INVALID_ACTION'
+          code: 'INVALID_ACTION',
         });
     }
 
@@ -155,7 +161,7 @@ const requireUserAccess = (action) => {
       error: `Access denied for ${action} action on user`,
       code: 'USER_ACCESS_DENIED',
       action: action,
-      userRole: currentUser.role
+      userRole: currentUser.role,
     });
   };
 };
@@ -168,7 +174,7 @@ const requireRoleAssignmentPermission = () => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
@@ -178,7 +184,7 @@ const requireRoleAssignmentPermission = () => {
     if (!newRole) {
       return res.status(400).json({
         error: 'Role is required',
-        code: 'ROLE_REQUIRED'
+        code: 'ROLE_REQUIRED',
       });
     }
 
@@ -186,7 +192,7 @@ const requireRoleAssignmentPermission = () => {
       return res.status(400).json({
         error: 'Invalid role specified',
         code: 'INVALID_ROLE',
-        validRoles: Object.values(ROLES)
+        validRoles: Object.values(ROLES),
       });
     }
 
@@ -195,7 +201,7 @@ const requireRoleAssignmentPermission = () => {
         error: 'Cannot assign this role',
         code: 'ROLE_ASSIGNMENT_DENIED',
         assignerRole: assignerRole,
-        targetRole: newRole
+        targetRole: newRole,
       });
     }
 
@@ -212,7 +218,7 @@ const requireDepartmentAccess = (requireSameDepartment = false) => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
@@ -223,13 +229,13 @@ const requireDepartmentAccess = (requireSameDepartment = false) => {
 
     if (requireSameDepartment) {
       const targetDepartment = req.params.department || req.body.department || req.query.department;
-      
+
       if (targetDepartment && targetDepartment !== req.user.department) {
         return res.status(403).json({
           error: 'Access denied to different department',
           code: 'DEPARTMENT_ACCESS_DENIED',
           userDepartment: req.user.department,
-          targetDepartment: targetDepartment
+          targetDepartment: targetDepartment,
         });
       }
     }
@@ -247,7 +253,7 @@ const requireHigherOrEqualRole = (targetRoleSource = 'body') => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        code: 'AUTH_REQUIRED'
+        code: 'AUTH_REQUIRED',
       });
     }
 
@@ -265,7 +271,7 @@ const requireHigherOrEqualRole = (targetRoleSource = 'body') => {
       default:
         return res.status(400).json({
           error: 'Invalid target role source',
-          code: 'INVALID_ROLE_SOURCE'
+          code: 'INVALID_ROLE_SOURCE',
         });
     }
 
@@ -278,7 +284,7 @@ const requireHigherOrEqualRole = (targetRoleSource = 'body') => {
         error: 'Insufficient role hierarchy',
         code: 'INSUFFICIENT_ROLE_HIERARCHY',
         userRole: req.user.role,
-        targetRole: targetRole
+        targetRole: targetRole,
       });
     }
 
@@ -296,30 +302,30 @@ const createResourceAccessChecker = (resourceName, resourceQuery) => {
     return async (req, res, next) => {
       try {
         const resourceId = req.params.id || req.params[`${resourceName}Id`];
-        
+
         if (!resourceId) {
           return res.status(400).json({
             error: `${resourceName} ID is required`,
-            code: 'RESOURCE_ID_REQUIRED'
+            code: 'RESOURCE_ID_REQUIRED',
           });
         }
 
         const resource = await resourceQuery(resourceId);
-        
+
         if (!resource) {
           return res.status(404).json({
             error: `${resourceName} not found`,
-            code: 'RESOURCE_NOT_FOUND'
+            code: 'RESOURCE_NOT_FOUND',
           });
         }
 
         const hasAccess = canAccessResource(req.user, resourceName, resource, accessType);
-        
+
         if (!hasAccess) {
           return res.status(403).json({
             error: `Access denied to ${resourceName}`,
             code: 'RESOURCE_ACCESS_DENIED',
-            resourceType: resourceName
+            resourceType: resourceName,
           });
         }
 
@@ -329,7 +335,7 @@ const createResourceAccessChecker = (resourceName, resourceQuery) => {
         return res.status(500).json({
           error: `Error accessing ${resourceName}`,
           code: 'RESOURCE_ACCESS_ERROR',
-          details: error.message
+          details: error.message,
         });
       }
     };
@@ -337,23 +343,21 @@ const createResourceAccessChecker = (resourceName, resourceQuery) => {
 };
 
 // Pre-configured common middleware
-const requireAdmin = requirePermission([
-  PERMISSIONS.SYSTEM_SETTINGS,
-  PERMISSIONS.USERS_DELETE,
-  PERMISSIONS.USERS_ASSIGN_ROLES
-], 'OR');
+const requireAdmin = requirePermission(
+  [PERMISSIONS.SYSTEM_SETTINGS, PERMISSIONS.USERS_DELETE, PERMISSIONS.USERS_ASSIGN_ROLES],
+  'OR'
+);
 
-const requireHROrAdmin = requirePermission([
-  PERMISSIONS.USERS_READ_ALL,
-  PERMISSIONS.CHECKLISTS_ASSIGN,
-  PERMISSIONS.REPORTS_GENERATE
-], 'OR');
+const requireHROrAdmin = requirePermission(
+  [PERMISSIONS.USERS_READ_ALL, PERMISSIONS.CHECKLISTS_ASSIGN, PERMISSIONS.REPORTS_GENERATE],
+  'OR'
+);
 
 const requireAuthenticated = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({
       error: 'Authentication required',
-      code: 'AUTH_REQUIRED'
+      code: 'AUTH_REQUIRED',
     });
   }
   next();
@@ -367,9 +371,9 @@ module.exports = {
   requireDepartmentAccess,
   requireHigherOrEqualRole,
   createResourceAccessChecker,
-  
+
   // Pre-configured middleware
   requireAdmin,
   requireHROrAdmin,
-  requireAuthenticated
+  requireAuthenticated,
 };

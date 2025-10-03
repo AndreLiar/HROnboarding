@@ -123,7 +123,8 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized
  */
-router.get('/',
+router.get(
+  '/',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_VIEW),
   TemplateController.getAllTemplates
@@ -143,7 +144,8 @@ router.get('/',
  *       401:
  *         description: Unauthorized
  */
-router.get('/categories',
+router.get(
+  '/categories',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_VIEW),
   TemplateController.getCategories
@@ -179,7 +181,8 @@ router.get('/categories',
  *       401:
  *         description: Unauthorized
  */
-router.get('/:id',
+router.get(
+  '/:id',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_VIEW),
   TemplateController.getTemplateById
@@ -235,7 +238,8 @@ router.get('/:id',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/',
+router.post(
+  '/',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_CREATE),
   TemplateController.createTemplate
@@ -292,7 +296,8 @@ router.post('/',
  *       403:
  *         description: Insufficient permissions
  */
-router.put('/:id',
+router.put(
+  '/:id',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_EDIT),
   TemplateController.updateTemplate
@@ -324,7 +329,8 @@ router.put('/:id',
  *       403:
  *         description: Insufficient permissions
  */
-router.delete('/:id',
+router.delete(
+  '/:id',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_DELETE),
   TemplateController.deleteTemplate
@@ -366,7 +372,8 @@ router.delete('/:id',
  *       403:
  *         description: Insufficient permissions
  */
-router.post('/:id/clone',
+router.post(
+  '/:id/clone',
   authenticate,
   requirePermission(PERMISSIONS.TEMPLATES_CREATE),
   TemplateController.cloneTemplate

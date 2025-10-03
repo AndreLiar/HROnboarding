@@ -22,18 +22,17 @@ class TemplateApprovalController {
       `);
 
       if (templateResult.recordset.length === 0) {
-        return res.status(404).json({ 
-          error: 'Template not found or not in draft status' 
+        return res.status(404).json({
+          error: 'Template not found or not in draft status',
         });
       }
 
       const template = templateResult.recordset[0];
 
       // Check if user has permission to submit (owner, admin, or hr_manager)
-      if (template.created_by !== userId && 
-          !['admin', 'hr_manager'].includes(req.user.role)) {
-        return res.status(403).json({ 
-          error: 'Insufficient permissions to submit this template for approval' 
+      if (template.created_by !== userId && !['admin', 'hr_manager'].includes(req.user.role)) {
+        return res.status(403).json({
+          error: 'Insufficient permissions to submit this template for approval',
         });
       }
 
@@ -44,8 +43,8 @@ class TemplateApprovalController {
       `);
 
       if (existingRequest.recordset.length > 0) {
-        return res.status(400).json({ 
-          error: 'Template already has a pending approval request' 
+        return res.status(400).json({
+          error: 'Template already has a pending approval request',
         });
       }
 
@@ -61,8 +60,8 @@ class TemplateApprovalController {
       `);
 
       if (approverResult.recordset.length === 0) {
-        return res.status(400).json({ 
-          error: 'No available approvers found' 
+        return res.status(400).json({
+          error: 'No available approvers found',
         });
       }
 
@@ -73,8 +72,7 @@ class TemplateApprovalController {
       await request
         .input('approvalRequestId', approvalRequestId)
         .input('approverId', approverId)
-        .input('comments', comments || 'Template submitted for approval')
-        .query(`
+        .input('comments', comments || 'Template submitted for approval').query(`
           INSERT INTO TemplateApprovalRequests (
             id, template_id, requested_by, assigned_to, status, comments
           ) VALUES (
@@ -92,14 +90,13 @@ class TemplateApprovalController {
       res.json({
         message: 'Template submitted for approval successfully',
         approvalRequestId,
-        status: 'pending_approval'
+        status: 'pending_approval',
       });
-
     } catch (error) {
       console.error('Error submitting template for approval:', error);
       res.status(500).json({
         error: 'Failed to submit template for approval',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -109,11 +106,7 @@ class TemplateApprovalController {
    */
   static async getApprovalRequests(req, res) {
     try {
-      const { 
-        status = 'pending', 
-        page = 1, 
-        limit = 10 
-      } = req.query;
+      const { status = 'pending', page = 1, limit = 10 } = req.query;
       const userId = req.user.id;
 
       const offset = (page - 1) * limit;
@@ -161,15 +154,14 @@ class TemplateApprovalController {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / limit),
+        },
       });
-
     } catch (error) {
       console.error('Error fetching approval requests:', error);
       res.status(500).json({
         error: 'Failed to fetch approval requests',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -196,8 +188,8 @@ class TemplateApprovalController {
       `);
 
       if (approvalRequest.recordset.length === 0) {
-        return res.status(404).json({ 
-          error: 'Approval request not found or not assigned to you' 
+        return res.status(404).json({
+          error: 'Approval request not found or not assigned to you',
         });
       }
 
@@ -207,8 +199,7 @@ class TemplateApprovalController {
       // Update approval request
       await request
         .input('templateId', templateId)
-        .input('comments', comments || 'Template approved')
-        .query(`
+        .input('comments', comments || 'Template approved').query(`
           UPDATE TemplateApprovalRequests 
           SET 
             status = 'approved',
@@ -230,14 +221,13 @@ class TemplateApprovalController {
       res.json({
         message: 'Template approved successfully',
         templateId,
-        status: 'approved'
+        status: 'approved',
       });
-
     } catch (error) {
       console.error('Error approving template:', error);
       res.status(500).json({
         error: 'Failed to approve template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -264,8 +254,8 @@ class TemplateApprovalController {
       `);
 
       if (approvalRequest.recordset.length === 0) {
-        return res.status(404).json({ 
-          error: 'Approval request not found or not assigned to you' 
+        return res.status(404).json({
+          error: 'Approval request not found or not assigned to you',
         });
       }
 
@@ -276,8 +266,7 @@ class TemplateApprovalController {
       await request
         .input('templateId', templateId)
         .input('comments', comments || 'Template rejected')
-        .input('changesRequested', changes_requested || null)
-        .query(`
+        .input('changesRequested', changes_requested || null).query(`
           UPDATE TemplateApprovalRequests 
           SET 
             status = 'rejected',
@@ -298,14 +287,13 @@ class TemplateApprovalController {
         message: 'Template rejected successfully',
         templateId,
         status: 'draft',
-        changes_requested
+        changes_requested,
       });
-
     } catch (error) {
       console.error('Error rejecting template:', error);
       res.status(500).json({
         error: 'Failed to reject template',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -346,17 +334,15 @@ class TemplateApprovalController {
       `);
 
       if (result.recordset.length === 0) {
-        return res.status(404).json({ 
-          error: 'Approval request not found or insufficient permissions' 
+        return res.status(404).json({
+          error: 'Approval request not found or insufficient permissions',
         });
       }
 
       const approvalDetails = result.recordset[0];
 
       // Get template items if needed
-      const itemsResult = await request
-        .input('templateId', approvalDetails.template_id)
-        .query(`
+      const itemsResult = await request.input('templateId', approvalDetails.template_id).query(`
           SELECT * FROM TemplateItems 
           WHERE template_id = @templateId 
           ORDER BY sort_order ASC
@@ -365,12 +351,11 @@ class TemplateApprovalController {
       approvalDetails.template_items = itemsResult.recordset;
 
       res.json(approvalDetails);
-
     } catch (error) {
       console.error('Error fetching approval request details:', error);
       res.status(500).json({
         error: 'Failed to fetch approval request details',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -398,12 +383,11 @@ class TemplateApprovalController {
       `);
 
       res.json(result.recordset);
-
     } catch (error) {
       console.error('Error fetching template approval history:', error);
       res.status(500).json({
         error: 'Failed to fetch template approval history',
-        details: error.message
+        details: error.message,
       });
     }
   }

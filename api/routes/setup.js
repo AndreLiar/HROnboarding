@@ -19,7 +19,7 @@ const router = express.Router();
 router.post('/auth-tables', async (req, res) => {
   try {
     console.log('🔄 Creating authentication tables...');
-    
+
     // Get database connection
     const pool = await sql.connect({
       server: process.env.DATABASE_SERVER,
@@ -28,10 +28,10 @@ router.post('/auth-tables', async (req, res) => {
       password: process.env.DATABASE_PASSWORD,
       options: {
         encrypt: true,
-        trustServerCertificate: false
-      }
+        trustServerCertificate: false,
+      },
     });
-    
+
     // Create Users table
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
@@ -53,7 +53,7 @@ router.post('/auth-tables', async (req, res) => {
           locked_until DATETIME2 NULL
       );
     `);
-    
+
     // Create UserSessions table
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='UserSessions' AND xtype='U')
@@ -69,50 +69,50 @@ router.post('/auth-tables', async (req, res) => {
           FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
       );
     `);
-    
+
     // Create indexes for performance
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Users_Email')
       CREATE INDEX IX_Users_Email ON Users(email);
     `);
-    
+
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Users_Role')
       CREATE INDEX IX_Users_Role ON Users(role);
     `);
-    
+
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_UserSessions_UserId')
       CREATE INDEX IX_UserSessions_UserId ON UserSessions(user_id);
     `);
-    
+
     await pool.request().query(`
       IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_UserSessions_TokenHash')
       CREATE INDEX IX_UserSessions_TokenHash ON UserSessions(token_hash);
     `);
-    
+
     // Check if default admin user exists
     const adminCheck = await pool.request().query(`
       SELECT COUNT(*) as count FROM Users WHERE email = 'admin@hr-onboarding.com'
     `);
-    
+
     if (adminCheck.recordset[0].count === 0) {
       const hashedPassword = await bcrypt.hash('AdminPassword123!', 12);
-      
-      await pool.request()
+
+      await pool
+        .request()
         .input('email', 'admin@hr-onboarding.com')
         .input('password_hash', hashedPassword)
         .input('first_name', 'System')
         .input('last_name', 'Administrator')
-        .input('role', 'admin')
-        .query(`
+        .input('role', 'admin').query(`
           INSERT INTO Users (email, password_hash, first_name, last_name, role, email_verified, is_active)
           VALUES (@email, @password_hash, @first_name, @last_name, @role, 1, 1)
         `);
-      
+
       console.log('👑 Default admin user created');
     }
-    
+
     // Verify tables exist
     const tablesResult = await pool.request().query(`
       SELECT TABLE_NAME 
@@ -120,11 +120,11 @@ router.post('/auth-tables', async (req, res) => {
       WHERE TABLE_TYPE = 'BASE TABLE'
       AND TABLE_NAME IN ('Users', 'UserSessions')
     `);
-    
+
     const userCount = await pool.request().query('SELECT COUNT(*) as count FROM Users');
-    
+
     console.log('✅ Authentication tables created successfully!');
-    
+
     res.json({
       message: 'Authentication database schema executed successfully',
       tables: tablesResult.recordset.map(r => r.TABLE_NAME),
@@ -132,15 +132,14 @@ router.post('/auth-tables', async (req, res) => {
       defaultAdmin: {
         email: 'admin@hr-onboarding.com',
         password: 'AdminPassword123!',
-        note: 'Default admin account created - change password after first login'
-      }
+        note: 'Default admin account created - change password after first login',
+      },
     });
-    
   } catch (error) {
     console.error('❌ Error executing database schema:', error.message);
     res.status(500).json({
       error: 'Failed to execute authentication database schema',
-      details: error.message
+      details: error.message,
     });
   }
 });
@@ -160,7 +159,7 @@ router.post('/auth-tables', async (req, res) => {
 router.post('/template-tables', async (req, res) => {
   try {
     console.log('🔄 Creating template management tables...');
-    
+
     const pool = await sql.connect({
       server: process.env.DATABASE_SERVER,
       database: process.env.DATABASE_NAME,
@@ -168,10 +167,10 @@ router.post('/template-tables', async (req, res) => {
       password: process.env.DATABASE_PASSWORD,
       options: {
         encrypt: true,
-        trustServerCertificate: false
-      }
+        trustServerCertificate: false,
+      },
     });
-    
+
     // Execute template schema step by step
     console.log('📝 Creating ChecklistTemplates table...');
     await pool.request().query(`
@@ -311,13 +310,13 @@ router.post('/template-tables', async (req, res) => {
     `);
 
     console.log('📝 Creating default template...');
-    const adminCheck = await pool.request().query(`SELECT TOP 1 id FROM Users WHERE role = 'admin'`);
+    const adminCheck = await pool
+      .request()
+      .query(`SELECT TOP 1 id FROM Users WHERE role = 'admin'`);
     if (adminCheck.recordset.length > 0) {
       const adminUserId = adminCheck.recordset[0].id;
-      
-      await pool.request()
-        .input('adminUserId', adminUserId)
-        .query(`
+
+      await pool.request().input('adminUserId', adminUserId).query(`
           IF NOT EXISTS (SELECT * FROM ChecklistTemplates WHERE name = 'Standard Employee Onboarding')
           BEGIN
             DECLARE @templateId UNIQUEIDENTIFIER = NEWID();
@@ -354,7 +353,7 @@ router.post('/template-tables', async (req, res) => {
           END
         `);
     }
-    
+
     // Verify template tables exist
     const tablesResult = await pool.request().query(`
       SELECT TABLE_NAME 
@@ -362,12 +361,16 @@ router.post('/template-tables', async (req, res) => {
       WHERE TABLE_TYPE = 'BASE TABLE'
       AND TABLE_NAME IN ('ChecklistTemplates', 'TemplateItems', 'TemplateCategories', 'TemplateVersionHistory')
     `);
-    
-    const templateCount = await pool.request().query('SELECT COUNT(*) as count FROM ChecklistTemplates');
-    const categoryCount = await pool.request().query('SELECT COUNT(*) as count FROM TemplateCategories');
-    
+
+    const templateCount = await pool
+      .request()
+      .query('SELECT COUNT(*) as count FROM ChecklistTemplates');
+    const categoryCount = await pool
+      .request()
+      .query('SELECT COUNT(*) as count FROM TemplateCategories');
+
     console.log('✅ Template management tables created successfully!');
-    
+
     res.json({
       message: 'Template management database schema executed successfully',
       tables: tablesResult.recordset.map(r => r.TABLE_NAME),
@@ -378,15 +381,14 @@ router.post('/template-tables', async (req, res) => {
         'Template categories with default data',
         'Template item management with dependencies',
         'Usage analytics and collaboration support',
-        'Default onboarding template with 12 items created'
-      ]
+        'Default onboarding template with 12 items created',
+      ],
     });
-    
   } catch (error) {
     console.error('❌ Error creating template tables:', error.message);
     res.status(500).json({
       error: 'Failed to create template management tables',
-      details: error.message
+      details: error.message,
     });
   }
 });
