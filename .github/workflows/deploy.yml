@@ -241,6 +241,21 @@ jobs:
           # Clean up any existing packages
           rm -f ../api-deployment.zip
           
+          # Create production .npmrc for Azure deployment
+          echo "Creating production .npmrc for optimized Azure deployment..."
+          cat > .npmrc << EOF
+          # Production deployment optimizations
+          production=true
+          omit=dev
+          audit=false
+          fund=false
+          progress=false
+          package-lock=false
+          EOF
+          
+          echo "✅ Production .npmrc created"
+          cat .npmrc
+          
           # Create package without node_modules (Azure will install them)
           zip -r ../api-deployment.zip . \
             -x "node_modules/*" \

@@ -257,6 +257,20 @@ jobs:
           # Create deployment package with blue identifier
           cd ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
           
+          # Create production .npmrc for Azure deployment
+          echo "Creating production .npmrc for optimized Azure deployment..."
+          cat > .npmrc << EOF
+          # Production deployment optimizations
+          production=true
+          omit=dev
+          audit=false
+          fund=false
+          progress=false
+          package-lock=false
+          EOF
+          
+          echo "✅ Production .npmrc created"
+          
           # Add blue version to package.json for tracking
           jq --arg version "$BLUE_VERSION" '.blueGreenVersion = $version' package.json > package.json.tmp
           mv package.json.tmp package.json
