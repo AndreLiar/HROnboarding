@@ -1,5 +1,4 @@
 const TemplateAIService = require('../services/templateAIService');
-const TemplateController = require('./templateController');
 const { v4: uuidv4 } = require('uuid');
 const sql = require('mssql');
 

@@ -173,7 +173,7 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
   /**
    * Fallback item suggestions when AI is unavailable
    */
-  static getFallbackItems(role, department) {
+  static getFallbackItems(role, _department) {
     const baseItems = [
       {
         title: 'Accueil et présentation de l\'entreprise',
