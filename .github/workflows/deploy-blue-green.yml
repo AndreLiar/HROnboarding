@@ -266,7 +266,7 @@ jobs:
           audit=false
           fund=false
           progress=false
-          package-lock=false
+          registry=https://registry.npmjs.org/
           EOF
           
           echo "✅ Production .npmrc created"

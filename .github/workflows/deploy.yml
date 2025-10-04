@@ -241,16 +241,22 @@ jobs:
           # Clean up any existing packages
           rm -f ../api-deployment.zip
           
+          # Create production-ready package-lock.json
+          echo "🔒 Creating production package-lock.json..."
+          npm ci --only=production --ignore-scripts
+          rm -rf node_modules
+          
           # Create production .npmrc for Azure deployment
           echo "Creating production .npmrc for optimized Azure deployment..."
           cat > .npmrc << EOF
-          # Production deployment optimizations
+          # Production deployment optimizations  
           production=true
           omit=dev
           audit=false
           fund=false
           progress=false
-          package-lock=false
+          registry=https://registry.npmjs.org/
+          cache=/tmp/npm-cache
           EOF
           
           echo "✅ Production .npmrc created"
@@ -288,15 +294,23 @@ jobs:
         run: |
           echo "⚙️ Configuring Azure Web App for Node.js"
           
-          # Set Node.js version and npm configuration
+          # Set Node.js version and npm configuration with enhanced settings
           az webapp config appsettings set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
             --settings \
               WEBSITE_NODE_DEFAULT_VERSION="20.x" \
               NPM_CONFIG_PRODUCTION="true" \
+              NPM_CONFIG_OMIT="dev" \
+              NPM_CONFIG_FUND="false" \
+              NPM_CONFIG_AUDIT="false" \
+              NPM_CONFIG_PROGRESS="false" \
+              NPM_CONFIG_CACHE="/tmp/npm-cache" \
+              NPM_CONFIG_REGISTRY="https://registry.npmjs.org/" \
               SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
-              ENABLE_ORYX_BUILD="true"
+              ENABLE_ORYX_BUILD="true" \
+              ORYX_AI_INSTRUMENTATION_KEY="" \
+              BUILD_FLAGS="--verbose"
           
           # Start the web app if it's stopped (common with Free tier)
           az webapp start \
