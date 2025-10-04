@@ -401,4 +401,96 @@ router.post('/template-tables', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /setup/update-categories:
+ *   post:
+ *     summary: Add missing French template categories
+ *     tags: [Setup]
+ *     responses:
+ *       200:
+ *         description: Categories updated successfully
+ */
+router.post('/update-categories', async (req, res) => {
+  try {
+    const sql = require('mssql');
+    const pool = await sql.connect({
+      server: process.env.DATABASE_SERVER,
+      database: process.env.DATABASE_NAME,
+      user: process.env.DATABASE_USERNAME,
+      password: process.env.DATABASE_PASSWORD,
+      options: {
+        encrypt: true,
+        trustServerCertificate: false,
+      },
+    });
+
+    console.log('📝 Adding missing French template categories...');
+    
+    // Add the missing categories
+    await pool.request().query(`
+      -- Add missing categories if they don't exist
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'technical')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('technical', 'Technical Onboarding', 'Templates for technical roles (developers, engineers, IT)', 'code', '#06B6D4', 6);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'management')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('management', 'Management Onboarding', 'Templates for managers and leadership positions', 'user-group', '#EC4899', 7);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'commercial')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('commercial', 'Commercial Onboarding', 'Templates for sales, business development and commercial roles', 'chart-bar', '#F97316', 8);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'legal')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('legal', 'Legal & Regulatory', 'Templates for legal compliance and French regulatory requirements', 'scale', '#7C3AED', 9);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'security')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('security', 'Security & Privacy', 'Templates for RGPD, security clearance and data protection', 'lock-closed', '#DC2626', 10);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'internship')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('internship', 'Internship Programs', 'Templates for interns, apprentices and work-study programs', 'student', '#059669', 11);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'remote')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('remote', 'Remote Workers', 'Templates for remote and hybrid work arrangements', 'home', '#0891B2', 12);
+      
+      IF NOT EXISTS (SELECT * FROM TemplateCategories WHERE name = 'freelance')
+      INSERT INTO TemplateCategories (name, display_name, description, icon, color, sort_order) VALUES
+      ('freelance', 'Freelance & Contractors', 'Templates for freelancers and external contractors', 'briefcase', '#7C2D12', 13);
+      
+      -- Update custom category sort order
+      UPDATE TemplateCategories SET sort_order = 14 WHERE name = 'custom';
+    `);
+
+    // Get final count
+    const categoryCount = await pool.request().query('SELECT COUNT(*) as count FROM TemplateCategories');
+
+    res.json({
+      message: 'French template categories added successfully',
+      categoryCount: categoryCount.recordset[0].count,
+      newCategories: [
+        'Technical Onboarding',
+        'Management Onboarding', 
+        'Commercial Onboarding',
+        'Legal & Regulatory',
+        'Security & Privacy',
+        'Internship Programs',
+        'Remote Workers',
+        'Freelance & Contractors'
+      ]
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating categories:', error);
+    res.status(500).json({
+      error: 'Failed to update categories',
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

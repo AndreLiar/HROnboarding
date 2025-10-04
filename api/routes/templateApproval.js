@@ -84,6 +84,48 @@ router.get(
 
 /**
  * @swagger
+ * /template-approval/admin/all-requests:
+ *   get:
+ *     summary: Get all approval requests in the system (Admin only)
+ *     tags: [Template Approval]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           default: pending
+ *         description: Filter by status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: All approval requests retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin access required
+ */
+router.get(
+  '/admin/all-requests',
+  authenticate,
+  requirePermission(PERMISSIONS.TEMPLATES_APPROVE),
+  TemplateApprovalController.getAllApprovalRequests
+);
+
+/**
+ * @swagger
  * /template-approval/requests/{id}:
  *   get:
  *     summary: Get approval request details

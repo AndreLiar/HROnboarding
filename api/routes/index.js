@@ -7,6 +7,7 @@ const setupRoutes = require('./setup');
 const usersRoutes = require('./users');
 const templateRoutes = require('./templates');
 const templateApprovalRoutes = require('./templateApproval');
+const templateAIRoutes = require('./templateAI');
 
 const router = express.Router();
 
@@ -16,6 +17,7 @@ router.use('/setup', setupRoutes);
 router.use('/users', usersRoutes);
 router.use('/templates', templateRoutes);
 router.use('/template-approval', templateApprovalRoutes);
+router.use('/template-ai', templateAIRoutes);
 router.use('/', statusRoutes);
 router.use('/', checklistRoutes);
 router.use('/', healthRoutes);

@@ -159,6 +159,8 @@ export const AuthProvider = ({ children }) => {
       return [
         'templates:view',
         'templates:read',
+        'templates:create',
+        'templates:edit',
         'checklists:read:own',
         'checklists:update:own',
       ].includes(permission);

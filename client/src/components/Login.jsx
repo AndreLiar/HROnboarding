@@ -7,9 +7,6 @@ import {
   Typography,
   Alert,
   CircularProgress,
-  Card,
-  CardContent,
-  Divider,
 } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -34,27 +31,6 @@ const Login = () => {
     setLoading(false);
   };
 
-  const handleDemoLogin = async demoType => {
-    setLoading(true);
-    setError('');
-
-    let demoCredentials;
-    switch (demoType) {
-      case 'admin':
-        demoCredentials = { email: 'admin@hr-onboarding.com', password: 'AdminPassword123!' };
-        break;
-      default:
-        demoCredentials = { email: 'admin@hr-onboarding.com', password: 'AdminPassword123!' };
-    }
-
-    const result = await login(demoCredentials.email, demoCredentials.password);
-
-    if (!result.success) {
-      setError(result.error);
-    }
-
-    setLoading(false);
-  };
 
   return (
     <Box
@@ -118,34 +94,6 @@ const Login = () => {
           </Button>
         </form>
 
-        <Divider sx={{ my: 2 }}>
-          <Typography variant='body2' color='text.secondary'>
-            Ou utilisez un compte de démonstration
-          </Typography>
-        </Divider>
-
-        <Card variant='outlined' sx={{ mt: 2 }}>
-          <CardContent sx={{ pt: 2, pb: '16px !important' }}>
-            <Typography variant='subtitle2' gutterBottom>
-              Comptes de démonstration:
-            </Typography>
-
-            <Button
-              fullWidth
-              variant='outlined'
-              onClick={() => handleDemoLogin('admin')}
-              disabled={loading}
-              sx={{ mb: 1 }}
-              size='small'
-            >
-              Admin Système
-            </Button>
-
-            <Typography variant='caption' display='block' color='text.secondary' sx={{ mt: 1 }}>
-              admin@hr-onboarding.com
-            </Typography>
-          </CardContent>
-        </Card>
 
         <Typography variant='body2' color='text.secondary' sx={{ mt: 2, textAlign: 'center' }}>
           Système d'intégration avec gestion de templates, workflow d'approbation, et IA

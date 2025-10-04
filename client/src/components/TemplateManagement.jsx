@@ -41,7 +41,7 @@ const API_BASE = import.meta.env.PROD
   : 'http://localhost:3001';
 
 const TemplateManagement = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [templates, setTemplates] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +54,16 @@ const TemplateManagement = () => {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [actionMenu, setActionMenu] = useState({ anchorEl: null, template: null });
   const [tabValue, setTabValue] = useState(0);
+
+  // AI Template Generator state
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiTemplate, setAiTemplate] = useState(null);
+  const [aiFormData, setAiFormData] = useState({
+    role: '',
+    department: '',
+    specific_requirements: ''
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -191,6 +201,34 @@ const TemplateManagement = () => {
     }
   };
 
+  // Helper function to check if user can edit a template
+  const canEditTemplate = template => {
+    if (!template || template.status !== 'draft') return false;
+    
+    // Admin and HR managers can edit any template
+    if (hasPermission('templates:approve')) return true;
+    
+    // Employees can edit their own templates
+    if (user?.role === 'employee' && template.created_by === user.id) return true;
+    
+    // Fallback to general edit permission
+    return hasPermission('templates:edit');
+  };
+
+  // Helper function to check if user can submit template for approval
+  const canSubmitForApproval = template => {
+    if (!template || template.status !== 'draft') return false;
+    
+    // Admin and HR managers can submit any template
+    if (hasPermission('templates:approve')) return true;
+    
+    // Employees can submit their own templates
+    if (user?.role === 'employee' && template.created_by === user.id) return true;
+    
+    // HR managers and admins can submit any template (covered above)
+    return hasPermission('templates:edit');
+  };
+
   const handleSubmitForApproval = async templateId => {
     try {
       await axios.post(`${API_BASE}/template-approval/templates/${templateId}/submit`, {
@@ -215,6 +253,60 @@ const TemplateManagement = () => {
       tags: '',
       items: [],
     });
+  };
+
+  // AI Template Generator functions
+  const generateTemplateWithAI = async () => {
+    try {
+      setAiGenerating(true);
+      setError('');
+      
+      const response = await axios.post(`${API_BASE}/template-ai/generate`, {
+        role: aiFormData.role,
+        department: aiFormData.department,
+        specific_requirements: aiFormData.specific_requirements,
+        auto_save: false
+      });
+      
+      setAiTemplate(response.data.template);
+      setError('');
+    } catch (err) {
+      setError('Erreur lors de la génération IA: ' + (err.response?.data?.details || err.message));
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const saveAITemplate = async () => {
+    try {
+      setAiGenerating(true);
+      
+      const templateData = {
+        ...aiTemplate,
+        items: aiTemplate.items
+      };
+      
+      await axios.post(`${API_BASE}/templates`, templateData);
+      
+      setAiDialogOpen(false);
+      setAiTemplate(null);
+      resetAIForm();
+      loadTemplates();
+      setError('');
+    } catch (err) {
+      setError('Erreur lors de la sauvegarde du template IA');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const resetAIForm = () => {
+    setAiFormData({
+      role: '',
+      department: '',
+      specific_requirements: ''
+    });
+    setAiTemplate(null);
   };
 
   const openEditDialog = template => {
@@ -297,9 +389,19 @@ const TemplateManagement = () => {
         <Typography variant='h4'>Gestion des Templates</Typography>
 
         {hasPermission('templates:create') && (
-          <Button variant='contained' startIcon={<Add />} onClick={() => setCreateDialogOpen(true)}>
-            Nouveau Template
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant='outlined' 
+              startIcon={<Description />} 
+              onClick={() => setAiDialogOpen(true)}
+              color="secondary"
+            >
+              🤖 Générer avec l'IA
+            </Button>
+            <Button variant='contained' startIcon={<Add />} onClick={() => setCreateDialogOpen(true)}>
+              Nouveau Template
+            </Button>
+          </Box>
         )}
       </Box>
 
@@ -406,7 +508,7 @@ const TemplateManagement = () => {
                   Voir
                 </Button>
 
-                {hasPermission('templates:edit') && template.status === 'draft' && (
+                {canEditTemplate(template) && (
                   <Button
                     size='small'
                     startIcon={<Edit />}
@@ -450,7 +552,7 @@ const TemplateManagement = () => {
         open={Boolean(actionMenu.anchorEl)}
         onClose={() => setActionMenu({ anchorEl: null, template: null })}
       >
-        {actionMenu.template?.status === 'draft' && hasPermission('templates:edit') && (
+        {canSubmitForApproval(actionMenu.template) && (
           <MenuItem
             onClick={() => {
               handleSubmitForApproval(actionMenu.template.id);
@@ -729,6 +831,139 @@ const TemplateManagement = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setViewDialogOpen(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* AI Template Generator Dialog */}
+      <Dialog
+        open={aiDialogOpen}
+        onClose={() => setAiDialogOpen(false)}
+        maxWidth='md'
+        fullWidth
+      >
+        <DialogTitle>
+          🤖 Générateur IA de Templates
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            {!aiTemplate ? (
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label='Rôle du nouvel employé'
+                    value={aiFormData.role}
+                    onChange={e => setAiFormData({ ...aiFormData, role: e.target.value })}
+                    placeholder='ex: Développeur Frontend, Data Scientist, Marketing Manager'
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label='Département'
+                    value={aiFormData.department}
+                    onChange={e => setAiFormData({ ...aiFormData, department: e.target.value })}
+                    placeholder='ex: IT, R&D, Marketing, HR'
+                    required
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={3}
+                    label='Exigences spécifiques (optionnel)'
+                    value={aiFormData.specific_requirements}
+                    onChange={e => setAiFormData({ ...aiFormData, specific_requirements: e.target.value })}
+                    placeholder='ex: Formation Python, accès aux données, certification sécurité, outils spécialisés...'
+                  />
+                </Grid>
+              </Grid>
+            ) : (
+              <Box>
+                <Alert severity="success" sx={{ mb: 3 }}>
+                  Template généré avec succès ! Vérifiez les détails ci-dessous avant de sauvegarder.
+                </Alert>
+                
+                <Typography variant="h6" gutterBottom>
+                  {aiTemplate.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {aiTemplate.description}
+                </Typography>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Catégorie: {aiTemplate.category} | 
+                    Durée estimée: {Math.round(aiTemplate.estimated_duration_minutes / 60)}h {aiTemplate.estimated_duration_minutes % 60}min | 
+                    Éléments: {aiTemplate.items?.length || 0}
+                  </Typography>
+                </Box>
+
+                {aiTemplate.items && aiTemplate.items.length > 0 && (
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Éléments du template:
+                    </Typography>
+                    {aiTemplate.items.map((item, index) => (
+                      <Card key={index} variant='outlined' sx={{ mb: 1 }}>
+                        <CardContent sx={{ py: 1 }}>
+                          <Typography variant='subtitle2'>
+                            {index + 1}. {item.title}
+                          </Typography>
+                          <Typography variant='body2' color='text.secondary'>
+                            {item.description}
+                          </Typography>
+                          <Box sx={{ mt: 1 }}>
+                            <Chip label={item.assignee_role} size='small' sx={{ mr: 1 }} />
+                            <Chip
+                              label={`Jour ${item.due_days_from_start}`}
+                              size='small'
+                              variant='outlined'
+                              sx={{ mr: 1 }}
+                            />
+                            <Chip
+                              label={`${item.estimated_duration_minutes}min`}
+                              size='small'
+                              variant='outlined'
+                            />
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setAiDialogOpen(false);
+            resetAIForm();
+          }}>
+            Annuler
+          </Button>
+          {!aiTemplate ? (
+            <Button 
+              onClick={generateTemplateWithAI} 
+              variant='contained' 
+              disabled={!aiFormData.role || !aiFormData.department || aiGenerating}
+              startIcon={aiGenerating ? <LinearProgress size={20} /> : null}
+            >
+              {aiGenerating ? 'Génération...' : 'Générer avec l\'IA'}
+            </Button>
+          ) : (
+            <Button 
+              onClick={saveAITemplate} 
+              variant='contained' 
+              color="success"
+              disabled={aiGenerating}
+            >
+              {aiGenerating ? 'Sauvegarde...' : 'Sauvegarder le Template'}
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

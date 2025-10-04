@@ -25,6 +25,14 @@ const swaggerOptions = {
       },
     ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'JWT authorization header using the Bearer scheme. Example: "Authorization: Bearer {token}"'
+        }
+      },
       schemas: {
         ChecklistItem: {
           type: 'object',
@@ -157,6 +165,11 @@ const swaggerOptions = {
         },
       },
     },
+    security: [
+      {
+        bearerAuth: []
+      }
+    ]
   },
   apis: ['./routes/*.js', './controllers/*.js'],
 };

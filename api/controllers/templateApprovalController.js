@@ -361,6 +361,73 @@ class TemplateApprovalController {
   }
 
   /**
+   * Get all approval requests in the system (Admin only)
+   */
+  static async getAllApprovalRequests(req, res) {
+    try {
+      const { status = 'pending', page = 1, limit = 10 } = req.query;
+
+      const offset = (page - 1) * limit;
+
+      const request = new sql.Request();
+      request.input('status', status);
+      request.input('limit', parseInt(limit));
+      request.input('offset', parseInt(offset));
+
+      // Get all approval requests in the system (admin view)
+      const query = `
+        SELECT 
+          tar.*,
+          ct.name as template_name,
+          ct.description as template_description,
+          ct.category as template_category,
+          ct.version as template_version,
+          requester.first_name + ' ' + requester.last_name as requested_by_name,
+          requester.email as requested_by_email,
+          approver.first_name + ' ' + approver.last_name as assigned_to_name,
+          approver.email as assigned_to_email,
+          tc.display_name as category_display_name,
+          tc.icon as category_icon,
+          tc.color as category_color
+        FROM TemplateApprovalRequests tar
+        INNER JOIN ChecklistTemplates ct ON tar.template_id = ct.id
+        INNER JOIN Users requester ON tar.requested_by = requester.id
+        INNER JOIN Users approver ON tar.assigned_to = approver.id
+        LEFT JOIN TemplateCategories tc ON ct.category = tc.name
+        WHERE tar.status = @status
+        ORDER BY tar.created_at DESC
+        OFFSET @offset ROWS
+        FETCH NEXT @limit ROWS ONLY;
+
+        SELECT COUNT(*) as total 
+        FROM TemplateApprovalRequests tar
+        WHERE tar.status = @status;
+      `;
+
+      const result = await request.query(query);
+      const allApprovalRequests = result.recordsets[0];
+      const total = result.recordsets[1][0].total;
+
+      res.json({
+        approvalRequests: allApprovalRequests,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit),
+        },
+        isAdminView: true,
+      });
+    } catch (error) {
+      console.error('Error fetching all approval requests:', error);
+      res.status(500).json({
+        error: 'Failed to fetch all approval requests',
+        details: error.message,
+      });
+    }
+  }
+
+  /**
    * Get approval history for a template
    */
   static async getTemplateApprovalHistory(req, res) {

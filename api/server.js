@@ -56,7 +56,7 @@ app.use(
   cors({
     origin: [
       'https://mango-pebble-0d01d2103.1.azurestaticapps.net',
-      'http://localhost:3000',
+      'http://localhost:3002',
       'http://localhost:5173',
       process.env.CORS_ORIGIN,
     ].filter(Boolean),

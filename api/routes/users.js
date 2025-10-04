@@ -363,10 +363,11 @@ router.get('/', authenticate, requireHROrAdmin, async (req, res) => {
       params.role = role;
     }
 
-    if (department) {
-      whereConditions.push('department = @department');
-      params.department = department;
-    }
+    // Note: department column doesn't exist in current schema
+    // if (department) {
+    //   whereConditions.push('department = @department');
+    //   params.department = department;
+    // }
 
     if (is_active !== undefined) {
       whereConditions.push('is_active = @is_active');
@@ -377,7 +378,7 @@ router.get('/', authenticate, requireHROrAdmin, async (req, res) => {
 
     const query = `
       SELECT 
-        id, email, first_name, last_name, role, department,
+        id, email, first_name, last_name, role,
         email_verified, is_active, created_at, updated_at, last_login
       FROM Users 
       ${whereClause}
@@ -436,7 +437,7 @@ router.get('/:userId', authenticate, requireUserAccess('view'), async (req, res)
 
     const result = await pool.request().input('user_id', userId).query(`
         SELECT 
-          id, email, first_name, last_name, role, department,
+          id, email, first_name, last_name, role,
           email_verified, is_active, created_at, updated_at, last_login
         FROM Users 
         WHERE id = @user_id
