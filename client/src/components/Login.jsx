@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Paper,
-  Box,
-  TextField,
-  Button,
-  Typography,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
+import { Paper, Box, TextField, Button, Typography, Alert, CircularProgress } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
@@ -30,7 +22,6 @@ const Login = () => {
 
     setLoading(false);
   };
-
 
   return (
     <Box
@@ -93,7 +84,6 @@ const Login = () => {
             {loading ? <CircularProgress size={24} /> : 'Se connecter'}
           </Button>
         </form>
-
 
         <Typography variant='body2' color='text.secondary' sx={{ mt: 2, textAlign: 'center' }}>
           Système d'intégration avec gestion de templates, workflow d'approbation, et IA

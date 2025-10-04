@@ -62,7 +62,7 @@ const TemplateManagement = () => {
   const [aiFormData, setAiFormData] = useState({
     role: '',
     department: '',
-    specific_requirements: ''
+    specific_requirements: '',
   });
 
   // Form state
@@ -204,13 +204,13 @@ const TemplateManagement = () => {
   // Helper function to check if user can edit a template
   const canEditTemplate = template => {
     if (!template || template.status !== 'draft') return false;
-    
+
     // Admin and HR managers can edit any template
     if (hasPermission('templates:approve')) return true;
-    
+
     // Employees can edit their own templates
     if (user?.role === 'employee' && template.created_by === user.id) return true;
-    
+
     // Fallback to general edit permission
     return hasPermission('templates:edit');
   };
@@ -218,13 +218,13 @@ const TemplateManagement = () => {
   // Helper function to check if user can submit template for approval
   const canSubmitForApproval = template => {
     if (!template || template.status !== 'draft') return false;
-    
+
     // Admin and HR managers can submit any template
     if (hasPermission('templates:approve')) return true;
-    
+
     // Employees can submit their own templates
     if (user?.role === 'employee' && template.created_by === user.id) return true;
-    
+
     // HR managers and admins can submit any template (covered above)
     return hasPermission('templates:edit');
   };
@@ -260,14 +260,14 @@ const TemplateManagement = () => {
     try {
       setAiGenerating(true);
       setError('');
-      
+
       const response = await axios.post(`${API_BASE}/template-ai/generate`, {
         role: aiFormData.role,
         department: aiFormData.department,
         specific_requirements: aiFormData.specific_requirements,
-        auto_save: false
+        auto_save: false,
       });
-      
+
       setAiTemplate(response.data.template);
       setError('');
     } catch (err) {
@@ -280,14 +280,14 @@ const TemplateManagement = () => {
   const saveAITemplate = async () => {
     try {
       setAiGenerating(true);
-      
+
       const templateData = {
         ...aiTemplate,
-        items: aiTemplate.items
+        items: aiTemplate.items,
       };
-      
+
       await axios.post(`${API_BASE}/templates`, templateData);
-      
+
       setAiDialogOpen(false);
       setAiTemplate(null);
       resetAIForm();
@@ -304,7 +304,7 @@ const TemplateManagement = () => {
     setAiFormData({
       role: '',
       department: '',
-      specific_requirements: ''
+      specific_requirements: '',
     });
     setAiTemplate(null);
   };
@@ -390,15 +390,19 @@ const TemplateManagement = () => {
 
         {hasPermission('templates:create') && (
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant='outlined' 
-              startIcon={<Description />} 
+            <Button
+              variant='outlined'
+              startIcon={<Description />}
               onClick={() => setAiDialogOpen(true)}
-              color="secondary"
+              color='secondary'
             >
               🤖 Générer avec l'IA
             </Button>
-            <Button variant='contained' startIcon={<Add />} onClick={() => setCreateDialogOpen(true)}>
+            <Button
+              variant='contained'
+              startIcon={<Add />}
+              onClick={() => setCreateDialogOpen(true)}
+            >
               Nouveau Template
             </Button>
           </Box>
@@ -835,15 +839,8 @@ const TemplateManagement = () => {
       </Dialog>
 
       {/* AI Template Generator Dialog */}
-      <Dialog
-        open={aiDialogOpen}
-        onClose={() => setAiDialogOpen(false)}
-        maxWidth='md'
-        fullWidth
-      >
-        <DialogTitle>
-          🤖 Générateur IA de Templates
-        </DialogTitle>
+      <Dialog open={aiDialogOpen} onClose={() => setAiDialogOpen(false)} maxWidth='md' fullWidth>
+        <DialogTitle>🤖 Générateur IA de Templates</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             {!aiTemplate ? (
@@ -875,35 +872,39 @@ const TemplateManagement = () => {
                     rows={3}
                     label='Exigences spécifiques (optionnel)'
                     value={aiFormData.specific_requirements}
-                    onChange={e => setAiFormData({ ...aiFormData, specific_requirements: e.target.value })}
+                    onChange={e =>
+                      setAiFormData({ ...aiFormData, specific_requirements: e.target.value })
+                    }
                     placeholder='ex: Formation Python, accès aux données, certification sécurité, outils spécialisés...'
                   />
                 </Grid>
               </Grid>
             ) : (
               <Box>
-                <Alert severity="success" sx={{ mb: 3 }}>
-                  Template généré avec succès ! Vérifiez les détails ci-dessous avant de sauvegarder.
+                <Alert severity='success' sx={{ mb: 3 }}>
+                  Template généré avec succès ! Vérifiez les détails ci-dessous avant de
+                  sauvegarder.
                 </Alert>
-                
-                <Typography variant="h6" gutterBottom>
+
+                <Typography variant='h6' gutterBottom>
                   {aiTemplate.name}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant='body2' color='text.secondary' sx={{ mb: 2 }}>
                   {aiTemplate.description}
                 </Typography>
-                
+
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Catégorie: {aiTemplate.category} | 
-                    Durée estimée: {Math.round(aiTemplate.estimated_duration_minutes / 60)}h {aiTemplate.estimated_duration_minutes % 60}min | 
-                    Éléments: {aiTemplate.items?.length || 0}
+                  <Typography variant='caption' color='text.secondary'>
+                    Catégorie: {aiTemplate.category} | Durée estimée:{' '}
+                    {Math.round(aiTemplate.estimated_duration_minutes / 60)}h{' '}
+                    {aiTemplate.estimated_duration_minutes % 60}min | Éléments:{' '}
+                    {aiTemplate.items?.length || 0}
                   </Typography>
                 </Box>
 
                 {aiTemplate.items && aiTemplate.items.length > 0 && (
                   <Box>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    <Typography variant='subtitle2' sx={{ mb: 1 }}>
                       Éléments du template:
                     </Typography>
                     {aiTemplate.items.map((item, index) => (
@@ -939,26 +940,28 @@ const TemplateManagement = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setAiDialogOpen(false);
-            resetAIForm();
-          }}>
+          <Button
+            onClick={() => {
+              setAiDialogOpen(false);
+              resetAIForm();
+            }}
+          >
             Annuler
           </Button>
           {!aiTemplate ? (
-            <Button 
-              onClick={generateTemplateWithAI} 
-              variant='contained' 
+            <Button
+              onClick={generateTemplateWithAI}
+              variant='contained'
               disabled={!aiFormData.role || !aiFormData.department || aiGenerating}
               startIcon={aiGenerating ? <LinearProgress size={20} /> : null}
             >
-              {aiGenerating ? 'Génération...' : 'Générer avec l\'IA'}
+              {aiGenerating ? 'Génération...' : "Générer avec l'IA"}
             </Button>
           ) : (
-            <Button 
-              onClick={saveAITemplate} 
-              variant='contained' 
-              color="success"
+            <Button
+              onClick={saveAITemplate}
+              variant='contained'
+              color='success'
               disabled={aiGenerating}
             >
               {aiGenerating ? 'Sauvegarde...' : 'Sauvegarder le Template'}

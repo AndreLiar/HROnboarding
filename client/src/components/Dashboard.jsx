@@ -78,10 +78,12 @@ const Dashboard = ({ onViewChange }) => {
 
         // Load approval requests - use admin endpoint to see all requests
         promises.push(
-          axios.get(`${API_BASE}/template-approval/admin/all-requests?limit=100`, { headers }).then(res => ({
-            type: 'approvals',
-            data: res.data,
-          }))
+          axios
+            .get(`${API_BASE}/template-approval/admin/all-requests?limit=100`, { headers })
+            .then(res => ({
+              type: 'approvals',
+              data: res.data,
+            }))
         );
       }
 
