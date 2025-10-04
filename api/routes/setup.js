@@ -305,7 +305,15 @@ router.post('/template-tables', async (req, res) => {
         ('compliance', 'Compliance & Training', 'Templates for regulatory compliance and mandatory training', 'shield-check', '#F59E0B', 3),
         ('training', 'Skills Training', 'Templates for professional development and training programs', 'academic-cap', '#3B82F6', 4),
         ('equipment', 'Equipment & Access', 'Templates for equipment setup and system access provisioning', 'desktop-computer', '#8B5CF6', 5),
-        ('custom', 'Custom Workflows', 'Organization-specific custom workflow templates', 'cog', '#6B7280', 6);
+        ('technical', 'Technical Onboarding', 'Templates for technical roles (developers, engineers, IT)', 'code', '#06B6D4', 6),
+        ('management', 'Management Onboarding', 'Templates for managers and leadership positions', 'user-group', '#EC4899', 7),
+        ('commercial', 'Commercial Onboarding', 'Templates for sales, business development and commercial roles', 'chart-bar', '#F97316', 8),
+        ('legal', 'Legal & Regulatory', 'Templates for legal compliance and French regulatory requirements', 'scale', '#7C3AED', 9),
+        ('security', 'Security & Privacy', 'Templates for RGPD, security clearance and data protection', 'lock-closed', '#DC2626', 10),
+        ('internship', 'Internship Programs', 'Templates for interns, apprentices and work-study programs', 'student', '#059669', 11),
+        ('remote', 'Remote Workers', 'Templates for remote and hybrid work arrangements', 'home', '#0891B2', 12),
+        ('freelance', 'Freelance & Contractors', 'Templates for freelancers and external contractors', 'briefcase', '#7C2D12', 13),
+        ('custom', 'Custom Workflows', 'Organization-specific custom workflow templates', 'cog', '#6B7280', 14);
       END
     `);
 
