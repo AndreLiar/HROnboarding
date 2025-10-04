@@ -13,7 +13,7 @@ class TemplateAIController {
 
       if (!role || !department) {
         return res.status(400).json({
-          error: 'Role and department are required'
+          error: 'Role and department are required',
         });
       }
 
@@ -21,8 +21,8 @@ class TemplateAIController {
 
       // Generate template with AI
       const aiTemplate = await TemplateAIService.generateTemplate(
-        role, 
-        department, 
+        role,
+        department,
         specific_requirements
       );
 
@@ -42,8 +42,7 @@ class TemplateAIController {
           .input('estimated_duration_minutes', aiTemplate.estimated_duration_minutes)
           .input('target_roles', JSON.stringify(aiTemplate.target_roles))
           .input('target_departments', JSON.stringify(aiTemplate.target_departments))
-          .input('created_by', userId)
-          .query(`
+          .input('created_by', userId).query(`
             INSERT INTO ChecklistTemplates (
               id, name, description, category, template_data, tags,
               estimated_duration_minutes, target_roles, target_departments,
@@ -68,8 +67,7 @@ class TemplateAIController {
             .input(`item_estimated_duration_${i}`, item.estimated_duration_minutes)
             .input(`item_sort_order_${i}`, item.sort_order)
             .input(`item_assignee_role_${i}`, item.assignee_role)
-            .input(`item_due_days_${i}`, item.due_days_from_start)
-            .query(`
+            .input(`item_due_days_${i}`, item.due_days_from_start).query(`
               INSERT INTO TemplateItems (
                 id, template_id, title, description, category, is_required,
                 estimated_duration_minutes, sort_order, assignee_role,
@@ -86,7 +84,7 @@ class TemplateAIController {
           message: 'AI template generated and saved successfully',
           template: { ...aiTemplate, id: templateId, status: 'draft' },
           generated_by: 'AI',
-          saved: true
+          saved: true,
         });
       } else {
         // Just return the generated template for preview
@@ -94,7 +92,7 @@ class TemplateAIController {
           message: 'AI template generated successfully',
           template: aiTemplate,
           generated_by: 'AI',
-          saved: false
+          saved: false,
         });
       }
     } catch (error) {
@@ -102,7 +100,7 @@ class TemplateAIController {
       res.status(500).json({
         error: 'Failed to generate template with AI',
         details: error.message,
-        fallback_available: true
+        fallback_available: true,
       });
     }
   }
@@ -138,7 +136,7 @@ class TemplateAIController {
 
       const existingTemplate = {
         ...template,
-        items: itemsResult.recordset
+        items: itemsResult.recordset,
       };
 
       // Get AI suggestions
@@ -152,13 +150,13 @@ class TemplateAIController {
         message: 'Template enhancement suggestions generated',
         template: existingTemplate,
         suggestions,
-        generated_by: 'AI'
+        generated_by: 'AI',
       });
     } catch (error) {
       console.error('Error enhancing template:', error);
       res.status(500).json({
         error: 'Failed to enhance template with AI',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -193,7 +191,7 @@ class TemplateAIController {
 
       const templateWithItems = {
         ...template,
-        items: itemsResult.recordset
+        items: itemsResult.recordset,
       };
 
       // Check compliance with AI
@@ -203,13 +201,13 @@ class TemplateAIController {
         message: 'Compliance check completed',
         template: templateWithItems,
         compliance: complianceReport,
-        generated_by: 'AI'
+        generated_by: 'AI',
       });
     } catch (error) {
       console.error('Error checking compliance:', error);
       res.status(500).json({
         error: 'Failed to check compliance with AI',
-        details: error.message
+        details: error.message,
       });
     }
   }
@@ -223,7 +221,7 @@ class TemplateAIController {
 
       if (!role || !department) {
         return res.status(400).json({
-          error: 'Role and department are required'
+          error: 'Role and department are required',
         });
       }
 
@@ -238,13 +236,13 @@ class TemplateAIController {
         suggestions,
         role,
         department,
-        generated_by: 'AI'
+        generated_by: 'AI',
       });
     } catch (error) {
       console.error('Error suggesting items:', error);
       res.status(500).json({
         error: 'Failed to suggest items',
-        details: error.message
+        details: error.message,
       });
     }
   }

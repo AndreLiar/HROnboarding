@@ -426,7 +426,7 @@ router.post('/update-categories', async (req, res) => {
     });
 
     console.log('📝 Adding missing French template categories...');
-    
+
     // Add the missing categories
     await pool.request().query(`
       -- Add missing categories if they don't exist
@@ -467,23 +467,24 @@ router.post('/update-categories', async (req, res) => {
     `);
 
     // Get final count
-    const categoryCount = await pool.request().query('SELECT COUNT(*) as count FROM TemplateCategories');
+    const categoryCount = await pool
+      .request()
+      .query('SELECT COUNT(*) as count FROM TemplateCategories');
 
     res.json({
       message: 'French template categories added successfully',
       categoryCount: categoryCount.recordset[0].count,
       newCategories: [
         'Technical Onboarding',
-        'Management Onboarding', 
+        'Management Onboarding',
         'Commercial Onboarding',
         'Legal & Regulatory',
         'Security & Privacy',
         'Internship Programs',
         'Remote Workers',
-        'Freelance & Contractors'
-      ]
+        'Freelance & Contractors',
+      ],
     });
-
   } catch (error) {
     console.error('❌ Error updating categories:', error);
     res.status(500).json({

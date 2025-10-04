@@ -1,8 +1,8 @@
 const openai = require('../config/openai');
-const { 
-  TEMPLATE_SYSTEM_PROMPT, 
+const {
+  TEMPLATE_SYSTEM_PROMPT,
   TEMPLATE_ENHANCEMENT_PROMPT,
-  TEMPLATE_COMPLIANCE_PROMPT 
+  TEMPLATE_COMPLIANCE_PROMPT,
 } = require('../utils/templatePrompts');
 
 class TemplateAIService {
@@ -33,12 +33,16 @@ Créez un template d'intégration complet et professionnel.`;
       });
 
       const response = completion.choices[0].message.content.trim();
-      
+
       // Parse the JSON response
       const templateData = JSON.parse(response);
-      
+
       // Validate the response structure
-      if (!templateData.template || !templateData.template.items || !Array.isArray(templateData.template.items)) {
+      if (
+        !templateData.template ||
+        !templateData.template.items ||
+        !Array.isArray(templateData.template.items)
+      ) {
         throw new Error('Invalid template structure from AI');
       }
 
@@ -110,9 +114,12 @@ Nom: ${template.name}
 Description: ${template.description}
 
 Items du template:
-${template.items.map(item => 
-  `- ${item.title}: ${item.description} (${item.assignee_role}, jour ${item.due_days_from_start})`
-).join('\n')}
+${template.items
+  .map(
+    item =>
+      `- ${item.title}: ${item.description} (${item.assignee_role}, jour ${item.due_days_from_start})`
+  )
+  .join('\n')}
 
 Vérifiez la conformité réglementaire française.`;
 
@@ -153,7 +160,11 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
       const completion = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
         messages: [
-          { role: 'system', content: 'Vous êtes un expert RH. Suggérez des éléments d\'intégration sous forme JSON avec title, description, category, assignee_role, due_days_from_start, estimated_duration_minutes.' },
+          {
+            role: 'system',
+            content:
+              "Vous êtes un expert RH. Suggérez des éléments d'intégration sous forme JSON avec title, description, category, assignee_role, due_days_from_start, estimated_duration_minutes.",
+          },
           { role: 'user', content: userPrompt },
         ],
         max_tokens: 1000,
@@ -162,7 +173,7 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
 
       const response = completion.choices[0].message.content.trim();
       const suggestions = JSON.parse(response);
-      
+
       return Array.isArray(suggestions) ? suggestions : suggestions.items || [];
     } catch (error) {
       console.error('AI Item Suggestion Error:', error);
@@ -176,13 +187,13 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
   static getFallbackItems(role, _department) {
     const baseItems = [
       {
-        title: 'Accueil et présentation de l\'entreprise',
-        description: 'Présentation de l\'entreprise, valeurs, et équipe',
+        title: "Accueil et présentation de l'entreprise",
+        description: "Présentation de l'entreprise, valeurs, et équipe",
         category: 'social',
         assignee_role: 'hr',
         due_days_from_start: 1,
         estimated_duration_minutes: 90,
-        is_required: true
+        is_required: true,
       },
       {
         title: 'Formation sécurité et prévention',
@@ -191,7 +202,7 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
         assignee_role: 'hr',
         due_days_from_start: 2,
         estimated_duration_minutes: 120,
-        is_required: true
+        is_required: true,
       },
       {
         title: 'Configuration des accès systèmes',
@@ -200,8 +211,8 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
         assignee_role: 'it',
         due_days_from_start: 1,
         estimated_duration_minutes: 60,
-        is_required: true
-      }
+        is_required: true,
+      },
     ];
 
     // Add role-specific items
@@ -213,7 +224,7 @@ Suggérez 3-5 éléments essentiels pour ce template d'intégration.`;
         assignee_role: 'developer',
         due_days_from_start: 2,
         estimated_duration_minutes: 180,
-        is_required: true
+        is_required: true,
       });
     }
 
