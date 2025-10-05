@@ -1,0 +1,328 @@
+name: Standard Deployment (Fallback)
+
+# Simple, fast deployment without Blue-Green complexity
+# Use this when Blue-Green deployment has issues
+
+concurrency:
+  group: standard-deployment-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment for standard deployment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      force_deploy:
+        description: 'Force deployment even if health checks fail'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  NODE_VERSION: '20'
+  AZURE_WEBAPP_PACKAGE_PATH: './api'
+  AZURE_STATIC_WEB_APPS_PACKAGE_PATH: './client'
+
+jobs:
+  # Quick setup and validation
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      resource-group: ${{ steps.env.outputs.resource-group }}
+      webapp-name: ${{ steps.env.outputs.webapp-name }}
+      static-app-name: ${{ steps.env.outputs.static-app-name }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version
+        id: version
+        run: |
+          VERSION="standard-$(date +%Y%m%d-%H%M%S)-${GITHUB_SHA:0:8}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🏷️ Standard deployment version: $VERSION"
+
+      - name: Determine environment
+        id: env
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          
+          if [[ "$ENV" == "production" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-prod-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-prod-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-prod-web" >> $GITHUB_OUTPUT
+          elif [[ "$ENV" == "staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-staging-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-staging-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-staging-web" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "resource-group=hr-onboarding-dev-rg" >> $GITHUB_OUTPUT
+            echo "webapp-name=hr-onboarding-dev-r2x0-api" >> $GITHUB_OUTPUT
+            echo "static-app-name=hr-onboarding-dev-r2x0-web" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "✅ Environment configured: $ENV"
+
+  # Quick quality checks
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install and validate API
+        run: |
+          echo "🔍 Quick API validation"
+          cd api
+          npm install --production
+          npm run lint
+          npm audit --audit-level=moderate
+          echo "✅ API validation passed"
+
+      - name: Install and validate Client
+        run: |
+          echo "🔍 Quick Client validation"
+          cd client
+          npm install
+          npm run lint
+          npm run build
+          echo "✅ Client validation passed"
+
+  # Deploy API directly
+  deploy-api:
+    needs: [setup, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Prepare API deployment
+        run: |
+          echo "📦 Preparing API deployment package"
+          cd api
+          npm install --production
+          
+          # Create optimized .npmrc
+          cat > .npmrc << EOF
+          production=true
+          omit=dev
+          audit=false
+          fund=false
+          progress=false
+          registry=https://registry.npmjs.org/
+          EOF
+          
+          # Create deployment package
+          zip -r ../api-standard-deployment.zip . \
+            -x "*.log" \
+            -x ".env*" \
+            -x "node_modules/.cache/*"
+          
+          echo "✅ API package ready"
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Configure Azure App Service
+        run: |
+          echo "🔧 Configuring Azure App Service for Node.js 20"
+          
+          # Set runtime and basic config
+          az webapp config set \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --linux-fx-version "NODE|20-lts" \
+            --startup-file "npm start"
+          
+          # Set core environment variables
+          az webapp config appsettings set \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --settings \
+              NODE_ENV="production" \
+              PORT="8080" \
+              DATABASE_SERVER="hr-onboarding-dev-r2x0-sql.database.windows.net" \
+              DATABASE_NAME="hr-onboarding" \
+              DATABASE_USERNAME="sqladmin" \
+              DATABASE_TYPE="mssql" \
+              DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              OPENAI_API_ENDPOINT="https://api.openai.com/v1" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              JWT_EXPIRY="7d" \
+              EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
+              EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
+              EMAIL_HOST="smtp.gmail.com" \
+              EMAIL_PORT="587" \
+              DEPLOYMENT_TYPE="standard" \
+              DEPLOYMENT_VERSION="${{ needs.setup.outputs.version }}" \
+              DEPLOYMENT_TIMESTAMP="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          
+          echo "✅ App Service configured"
+
+      - name: Deploy to Azure App Service
+        run: |
+          echo "🚀 Deploying to Azure App Service"
+          
+          # Deploy with shorter timeout for faster feedback
+          timeout 300 az webapp deploy \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --src-path ./api-standard-deployment.zip \
+            --type zip \
+            --timeout 300
+          
+          echo "✅ Deployment completed"
+
+      - name: Quick health check
+        run: |
+          echo "🔍 Quick health validation"
+          API_URL="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net"
+          
+          # Wait briefly for startup
+          sleep 30
+          
+          # Quick health check with 3 retries
+          for i in {1..3}; do
+            echo "Health check attempt $i/3..."
+            
+            if curl -f -s --max-time 30 "${API_URL}/health" >/dev/null 2>&1; then
+              echo "✅ API health check passed"
+              break
+            elif [[ $i -eq 3 ]]; then
+              if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
+                echo "⚠️ Health check failed but force_deploy is enabled - continuing"
+              else
+                echo "❌ Health check failed"
+                exit 1
+              fi
+            else
+              echo "⚠️ Health check failed, retrying in 30s..."
+              sleep 30
+            fi
+          done
+
+  # Deploy Frontend
+  deploy-frontend:
+    needs: [setup, validate, deploy-api]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: 
+      name: ${{ needs.setup.outputs.environment }}
+      url: https://${{ needs.setup.outputs.static-app-name }}.azurewebsites.net
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Build frontend
+        run: |
+          echo "🏗️ Building frontend"
+          cd client
+          npm install
+          npm run build
+        env:
+          VITE_API_URL: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
+          VITE_VERSION: ${{ needs.setup.outputs.version }}
+
+      - name: Deploy frontend
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/client'
+          api_location: ''
+          output_location: 'dist'
+
+  # Final validation
+  final-validation:
+    needs: [setup, deploy-api, deploy-frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Final health check
+        run: |
+          echo "🔍 Final deployment validation"
+          API_URL="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net"
+          
+          # Wait for frontend to stabilize
+          sleep 15
+          
+          # Quick final validation
+          if curl -f -s --max-time 20 "${API_URL}/health" >/dev/null 2>&1 && \
+             curl -f -s --max-time 20 "${API_URL}/status" >/dev/null 2>&1; then
+            echo "✅ Standard deployment validation PASSED"
+            echo "🚀 Deployment completed successfully"
+            echo "📍 API URL: ${API_URL}"
+            echo "📍 API Docs: ${API_URL}/api-docs"
+          else
+            if [[ "${{ github.event.inputs.force_deploy }}" == "true" ]]; then
+              echo "⚠️ Final validation failed but force_deploy is enabled"
+              echo "🚀 Deployment marked as completed (forced)"
+            else
+              echo "❌ Final validation failed"
+              exit 1
+            fi
+          fi
+
+      - name: Send success notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Standard Deployment Success - HR Onboarding ${{ needs.setup.outputs.environment }}"
+          to: andrelaurelyvan.kanmegnetabouguie@ynov.com
+          from: ${{ secrets.EMAIL_USERNAME }}
+          html_body: |
+            <h2>✅ Standard Deployment Completed</h2>
+            
+            <p><strong>Environment:</strong> ${{ needs.setup.outputs.environment }}</p>
+            <p><strong>Version:</strong> ${{ needs.setup.outputs.version }}</p>
+            <p><strong>Deployment Time:</strong> $(date -u)</p>
+            <p><strong>Type:</strong> Standard (Direct deployment)</p>
+            
+            <h3>🔗 Application Links</h3>
+            <ul>
+              <li><a href="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net">API Base URL</a></li>
+              <li><a href="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health">Health Check</a></li>
+              <li><a href="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/api-docs">API Documentation</a></li>
+              <li><a href="https://${{ needs.setup.outputs.static-app-name }}.azurewebsites.net">Frontend Application</a></li>
+            </ul>
+            
+            <p><strong>Status:</strong> All systems operational</p>

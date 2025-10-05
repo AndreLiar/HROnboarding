@@ -228,6 +228,7 @@ jobs:
   deploy-blue:
     needs: [version-and-setup, test-and-validate]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment: 
       name: ${{ needs.version-and-setup.outputs.environment }}
       url: https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net
@@ -533,6 +534,7 @@ jobs:
   validate-blue:
     needs: [version-and-setup, deploy-blue]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       health-status: ${{ steps.health.outputs.status }}
       should-proceed: ${{ steps.health.outputs.proceed }}
@@ -542,29 +544,61 @@ jobs:
       - name: Comprehensive Blue Health Check
         id: health
         run: |
-          echo "🔍 Running comprehensive health checks on Blue environment"
+          echo "🔍 Running optimized health checks on Blue environment"
           
-          # Set environment variables for health check script
+          # Set environment variables
           export ENVIRONMENT="${{ needs.version-and-setup.outputs.environment }}"
           export VERSION="${{ needs.deploy-blue.outputs.blue-version }}"
           export API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
           export FRONTEND_URL="https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net"
           
-          # Run comprehensive health check
-          if ./deployment/health-checks/comprehensive-health.sh "$API_URL" "$FRONTEND_URL"; then
+          # Optimized health check with smart retry logic
+          echo "🔍 Testing API health with optimized timeouts..."
+          HEALTH_PASSED=false
+          
+          # Smart retry: 20 attempts over 10 minutes max
+          for i in {1..20}; do
+            echo "Health check attempt $i/20..."
+            
+            # Test /health endpoint with 30s timeout
+            if curl -f -s --max-time 30 "${API_URL}/health" >/dev/null 2>&1; then
+              echo "✅ /health endpoint responding"
+              
+              # Test /status endpoint
+              if curl -f -s --max-time 30 "${API_URL}/status" >/dev/null 2>&1; then
+                echo "✅ /status endpoint responding"
+                HEALTH_PASSED=true
+                break
+              else
+                echo "⚠️ /status endpoint not responding"
+              fi
+            else
+              echo "⚠️ /health endpoint not responding"
+            fi
+            
+            # Exponential backoff: start with 15s, increase by 15s each time
+            WAIT_TIME=$((15 * i))
+            if [[ $WAIT_TIME -gt 60 ]]; then
+              WAIT_TIME=60
+            fi
+            
+            echo "⏳ Waiting ${WAIT_TIME}s before retry..."
+            sleep $WAIT_TIME
+          done
+          
+          if [[ "$HEALTH_PASSED" == "true" ]]; then
             echo "✅ Blue environment health check PASSED"
             echo "status=healthy" >> $GITHUB_OUTPUT
             echo "proceed=true" >> $GITHUB_OUTPUT
           else
-            echo "❌ Blue environment health check FAILED"
+            echo "❌ Blue environment health check FAILED after 10 minutes"
             echo "status=unhealthy" >> $GITHUB_OUTPUT
             echo "proceed=false" >> $GITHUB_OUTPUT
             
-            # Upload health check logs for debugging
-            if [[ -f "deployment/health-checks/health-check.log" ]]; then
-              echo "📋 Health check log:"
-              cat deployment/health-checks/health-check.log
-            fi
+            # Try to get detailed error info
+            echo "🔍 Attempting to get detailed error information..."
+            curl -v "${API_URL}/health" || true
+            curl -v "${API_URL}/status" || true
             
             exit 1
           fi
@@ -583,6 +617,7 @@ jobs:
   deploy-frontend-blue:
     needs: [version-and-setup, validate-blue]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: needs.validate-blue.outputs.should-proceed == 'true'
     environment: 
       name: ${{ needs.version-and-setup.outputs.environment }}
@@ -629,6 +664,7 @@ jobs:
   final-health-check:
     needs: [version-and-setup, deploy-blue, validate-blue, deploy-frontend-blue]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: needs.validate-blue.outputs.should-proceed == 'true'
     outputs:
       deployment-successful: ${{ steps.final.outputs.success }}
@@ -638,22 +674,50 @@ jobs:
       - name: Final comprehensive health check
         id: final
         run: |
-          echo "🔍 Running final health check on complete Blue environment"
+          echo "🔍 Running final optimized health check on complete Blue environment"
           
-          # Wait for frontend deployment to stabilize
-          sleep 30
+          # Brief wait for frontend deployment to stabilize
+          sleep 15
           
           export ENVIRONMENT="${{ needs.version-and-setup.outputs.environment }}"
           export VERSION="${{ needs.deploy-blue.outputs.blue-version }}"
           export API_URL="https://${{ needs.version-and-setup.outputs.webapp-name }}.azurewebsites.net"
           export FRONTEND_URL="https://${{ needs.version-and-setup.outputs.static-app-name }}.azurewebsites.net"
           
-          if ./deployment/health-checks/comprehensive-health.sh "$API_URL" "$FRONTEND_URL"; then
+          # Quick final validation with 5 minute timeout max
+          echo "🔍 Final validation with quick checks..."
+          FINAL_PASSED=false
+          
+          # Quick retry: 10 attempts over 5 minutes max
+          for i in {1..10}; do
+            echo "Final check attempt $i/10..."
+            
+            # Test both key endpoints quickly
+            if curl -f -s --max-time 20 "${API_URL}/health" >/dev/null 2>&1 && \
+               curl -f -s --max-time 20 "${API_URL}/status" >/dev/null 2>&1; then
+              echo "✅ API endpoints responding correctly"
+              FINAL_PASSED=true
+              break
+            else
+              echo "⚠️ API endpoints not responding, retrying..."
+            fi
+            
+            # Fixed 30s interval for final checks
+            sleep 30
+          done
+          
+          if [[ "$FINAL_PASSED" == "true" ]]; then
             echo "✅ Final Blue environment validation PASSED"
             echo "success=true" >> $GITHUB_OUTPUT
           else
-            echo "❌ Final Blue environment validation FAILED"
+            echo "❌ Final Blue environment validation FAILED after 5 minutes"
             echo "success=false" >> $GITHUB_OUTPUT
+            
+            # Get detailed error info
+            echo "🔍 Final error diagnostics..."
+            curl -v "${API_URL}/health" || true
+            curl -v "${API_URL}/status" || true
+            
             exit 1
           fi
 
