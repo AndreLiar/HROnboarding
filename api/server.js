@@ -80,15 +80,44 @@ app.use(
   })
 );
 
+// Early health check for Azure - before route mounting
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    message: 'HR Onboarding API is healthy',
+    version: '1.0.0',
+    uptime: process.uptime(),
+  });
+});
+
 // Mount all routes
 app.use('/', routes);
 
+// Add startup logging for Azure diagnostics
+console.log('🚀 Starting HR Onboarding API server...');
+console.log('🔧 Server configuration:');
+console.log(`  - Port: ${PORT}`);
+console.log(`  - Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`  - Process ID: ${process.pid}`);
+console.log(`  - Azure Detection: ${process.env.WEBSITE_SITE_NAME ? 'Running on Azure' : 'Local/Other'}`);
+
+// Azure-specific optimizations
+if (process.env.WEBSITE_SITE_NAME) {
+  console.log('🔵 Azure App Service detected - applying optimizations');
+  // Set keepalive for Azure load balancer
+  app.use((req, res, next) => {
+    res.setHeader('Connection', 'keep-alive');
+    next();
+  });
+}
+
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 HR Onboarding API running on port ${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`✅ Server started successfully`);
+  console.log(`✅ Server started successfully and accepting connections`);
 
   // Initialize database in background (non-blocking) with longer delay for Azure startup
   setTimeout(() => {
@@ -102,6 +131,15 @@ const server = app.listen(PORT, () => {
         console.log('🔄 App continues without database functionality');
       });
   }, 5000); // Increased delay for Azure startup
+});
+
+// Handle server startup errors
+server.on('error', (err) => {
+  console.error('❌ Server startup error:', err);
+  if (err.code === 'EADDRINUSE') {
+    console.error(`📍 Port ${PORT} is already in use`);
+  }
+  process.exit(1);
 });
 
 // Graceful shutdown
