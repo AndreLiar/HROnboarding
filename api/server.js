@@ -84,10 +84,10 @@ app.use(
 app.use('/', routes);
 
 // Start server
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 HR Onboarding API running on port ${PORT}`);
-  console.log(`📊 Health check: http://0.0.0.0:${PORT}/health`);
-  console.log(`📚 API Documentation: http://0.0.0.0:${PORT}/api-docs`);
+  console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
   console.log(`✅ Server started successfully`);
 
   // Initialize database in background (non-blocking) with longer delay for Azure startup

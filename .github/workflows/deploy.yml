@@ -359,7 +359,7 @@ jobs:
           az webapp config set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
-            --startup-file "npm start"
+            --startup-file "node server.js"
           
           # Step 6: Clear any deployment cache and restart
           echo "🔄 Clearing cache and restarting app..."
