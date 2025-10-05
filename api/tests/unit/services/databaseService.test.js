@@ -1,11 +1,9 @@
 const DatabaseService = require('../../../services/databaseService');
 const sql = require('mssql');
-const helpers = require('../../../utils/helpers');
 
 // Mock mssql
 jest.mock('mssql');
 jest.mock('../../../config/database');
-jest.mock('../../../utils/helpers');
 
 describe('DatabaseService', () => {
   beforeEach(() => {
