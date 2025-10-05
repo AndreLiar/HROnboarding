@@ -36,14 +36,14 @@ global.testUtils = {
     query: {},
     headers: {},
     user: { id: 'test-user-id', role: 'user' },
-    ...options
+    ...options,
   }),
-  
+
   createMockResponse: () => {
     const res = {};
     res.status = jest.fn().mockReturnValue(res);
     res.json = jest.fn().mockReturnValue(res);
     res.send = jest.fn().mockReturnValue(res);
     return res;
-  }
+  },
 };

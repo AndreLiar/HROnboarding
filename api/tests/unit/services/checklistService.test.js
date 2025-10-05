@@ -18,30 +18,32 @@ describe('ChecklistService', () => {
           task: 'Setup development environment',
           category: 'Technical',
           completed: false,
-          estimated_duration: '2 hours'
+          estimated_duration: '2 hours',
         },
         {
           task: 'Complete HR documentation',
           category: 'Administrative',
           completed: false,
-          estimated_duration: '1 hour'
-        }
+          estimated_duration: '1 hour',
+        },
       ];
 
       const mockOpenAIResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify(mockChecklistArray)
-          }
-        }]
+        choices: [
+          {
+            message: {
+              content: JSON.stringify(mockChecklistArray),
+            },
+          },
+        ],
       };
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockResolvedValue(mockOpenAIResponse)
-          }
-        }
+            create: jest.fn().mockResolvedValue(mockOpenAIResponse),
+          },
+        },
       };
 
       // Mock the openai module to return the mock client
@@ -57,16 +59,16 @@ describe('ChecklistService', () => {
       expect(result).toEqual({
         checklist: mockChecklistArray,
         role: role,
-        department: department
+        department: department,
       });
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith({
         model: 'gpt-3.5-turbo',
         messages: [
           { role: 'system', content: expect.any(String) },
-          { role: 'user', content: `Rôle: ${role}, Département: ${department}` }
+          { role: 'user', content: `Rôle: ${role}, Département: ${department}` },
         ],
         max_tokens: 1000,
-        temperature: 0.7
+        temperature: 0.7,
       });
     });
 
@@ -76,21 +78,21 @@ describe('ChecklistService', () => {
         {
           task: 'Fallback task 1',
           category: 'General',
-          completed: false
+          completed: false,
         },
         {
-          task: 'Fallback task 2', 
+          task: 'Fallback task 2',
           category: 'General',
-          completed: false
-        }
+          completed: false,
+        },
       ];
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockRejectedValue(new Error('Network error - OpenAI unavailable'))
-          }
-        }
+            create: jest.fn().mockRejectedValue(new Error('Network error - OpenAI unavailable')),
+          },
+        },
       };
 
       require('../../../config/openai').chat = mockOpenAI.chat;
@@ -107,22 +109,22 @@ describe('ChecklistService', () => {
       expect(result).toEqual({
         checklist: mockFallbackChecklist,
         role: role,
-        department: department
+        department: department,
       });
     });
 
     test('should handle OpenAI API errors gracefully', async () => {
       // Arrange
       const mockFallbackChecklist = [
-        { task: 'Fallback task', category: 'General', completed: false }
+        { task: 'Fallback task', category: 'General', completed: false },
       ];
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockRejectedValue(new Error('OpenAI API Error'))
-          }
-        }
+            create: jest.fn().mockRejectedValue(new Error('OpenAI API Error')),
+          },
+        },
       };
 
       require('../../../config/openai').chat = mockOpenAI.chat;
@@ -139,30 +141,32 @@ describe('ChecklistService', () => {
       expect(result).toEqual({
         checklist: mockFallbackChecklist,
         role: role,
-        department: department
+        department: department,
       });
     });
 
     test('should handle invalid JSON response from OpenAI', async () => {
       // Arrange
       const mockOpenAIResponse = {
-        choices: [{
-          message: {
-            content: 'Invalid JSON response'
-          }
-        }]
+        choices: [
+          {
+            message: {
+              content: 'Invalid JSON response',
+            },
+          },
+        ],
       };
 
       const mockFallbackChecklist = [
-        { task: 'Fallback task', category: 'General', completed: false }
+        { task: 'Fallback task', category: 'General', completed: false },
       ];
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockResolvedValue(mockOpenAIResponse)
-          }
-        }
+            create: jest.fn().mockResolvedValue(mockOpenAIResponse),
+          },
+        },
       };
 
       require('../../../config/openai').chat = mockOpenAI.chat;
@@ -179,28 +183,30 @@ describe('ChecklistService', () => {
       expect(result).toEqual({
         checklist: mockFallbackChecklist,
         role: role,
-        department: department
+        department: department,
       });
     });
 
     test('should include French HR compliance requirements in system prompt', async () => {
       // Arrange
       const mockOpenAIResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify([
-              { task: 'DPAE declaration', category: 'Legal', completed: false }
-            ])
-          }
-        }]
+        choices: [
+          {
+            message: {
+              content: JSON.stringify([
+                { task: 'DPAE declaration', category: 'Legal', completed: false },
+              ]),
+            },
+          },
+        ],
       };
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockResolvedValue(mockOpenAIResponse)
-          }
-        }
+            create: jest.fn().mockResolvedValue(mockOpenAIResponse),
+          },
+        },
       };
 
       require('../../../config/openai').chat = mockOpenAI.chat;
@@ -222,19 +228,21 @@ describe('ChecklistService', () => {
     test('should use correct OpenAI model and parameters', async () => {
       // Arrange
       const mockOpenAIResponse = {
-        choices: [{
-          message: {
-            content: JSON.stringify([{ task: 'Test', category: 'Test', completed: false }])
-          }
-        }]
+        choices: [
+          {
+            message: {
+              content: JSON.stringify([{ task: 'Test', category: 'Test', completed: false }]),
+            },
+          },
+        ],
       };
 
       const mockOpenAI = {
         chat: {
           completions: {
-            create: jest.fn().mockResolvedValue(mockOpenAIResponse)
-          }
-        }
+            create: jest.fn().mockResolvedValue(mockOpenAIResponse),
+          },
+        },
       };
 
       require('../../../config/openai').chat = mockOpenAI.chat;

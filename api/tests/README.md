@@ -21,6 +21,7 @@ tests/
 ## Running Tests
 
 ### Local Development
+
 ```bash
 # Run all tests
 npm test
@@ -36,6 +37,7 @@ npm run test:unit
 ```
 
 ### CI/CD Pipeline
+
 ```bash
 # CI-optimized test run (no watch, with coverage)
 npm run test:ci
@@ -44,17 +46,20 @@ npm run test:ci
 ## Test Categories
 
 ### Controller Tests
+
 - **checklistController.test.js**: Tests for checklist generation, sharing, and retrieval
 - **statusController.test.js**: Tests for API status and health endpoints
 - **templateController.test.js**: Tests for template CRUD operations
 
 ### Service Tests
+
 - **databaseService.test.js**: Tests for database operations and connection handling
 - **checklistService.test.js**: Tests for AI-powered checklist generation with fallbacks
 
 ## Coverage Thresholds
 
 Current coverage requirements:
+
 - **Branches**: 70%
 - **Functions**: 70%
 - **Lines**: 70%
@@ -69,7 +74,7 @@ Global test utilities are available via `global.testUtils`:
 const req = testUtils.createMockRequest({
   body: { role: 'Developer' },
   params: { id: '123' },
-  user: { id: 'user123' }
+  user: { id: 'user123' },
 });
 
 // Create mock response object
@@ -79,6 +84,7 @@ const res = testUtils.createMockResponse();
 ## Environment Configuration
 
 Tests use `.env.test` for environment variables. Key settings:
+
 - `NODE_ENV=test`
 - `DATABASE_TYPE=mock`
 - Mock credentials for all external services
@@ -86,12 +92,15 @@ Tests use `.env.test` for environment variables. Key settings:
 ## Mocking Strategy
 
 ### External Services
+
 - **OpenAI API**: Mocked to return predictable responses
 - **Database**: Mocked with jest.mock('mssql')
 - **Email Service**: Mocked to prevent actual email sends
 
 ### Test Data
+
 All test data uses realistic but fake values:
+
 - User IDs: 'test-user-id', 'user123'
 - Templates: Minimal valid structures
 - Checklists: Sample French HR compliance tasks
@@ -107,16 +116,19 @@ All test data uses realistic but fake values:
 ## Debugging Tests
 
 ### Verbose Output
+
 ```bash
 VERBOSE_TESTS=1 npm test
 ```
 
 ### Single Test File
+
 ```bash
 npm test -- checklistController.test.js
 ```
 
 ### Debug Mode
+
 ```bash
 npm test -- --detectOpenHandles --forceExit
 ```

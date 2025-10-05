@@ -15,7 +15,7 @@ describe('StatusController', () => {
         message: 'HR Onboarding API is running',
         timestamp: expect.any(String),
         port: expect.anything(), // PORT can be string or number
-        env: expect.any(String)
+        env: expect.any(String),
       });
     });
 
@@ -30,7 +30,7 @@ describe('StatusController', () => {
       // Assert
       const callArgs = res.json.mock.calls[0][0];
       const timestamp = callArgs.timestamp;
-      
+
       // Verify timestamp is valid ISO string
       expect(new Date(timestamp).toISOString()).toBe(timestamp);
     });
@@ -45,7 +45,7 @@ describe('StatusController', () => {
 
       // Assert
       const callArgs = res.json.mock.calls[0][0];
-      
+
       expect(callArgs.port).toEqual(expect.anything()); // PORT can be string or number
       expect(callArgs.env).toEqual(expect.any(String));
       expect(callArgs.message).toBe('HR Onboarding API is running');

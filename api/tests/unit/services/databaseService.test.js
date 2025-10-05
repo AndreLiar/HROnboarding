@@ -14,9 +14,9 @@ describe('DatabaseService', () => {
     test('should connect to database and create table', async () => {
       // Arrange
       const mockRequest = {
-        query: jest.fn().mockResolvedValue({})
+        query: jest.fn().mockResolvedValue({}),
       };
-      
+
       sql.connect = jest.fn().mockResolvedValue({});
       sql.Request = jest.fn().mockReturnValue(mockRequest);
 
@@ -35,17 +35,14 @@ describe('DatabaseService', () => {
       // Arrange
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+
       sql.connect = jest.fn().mockRejectedValue(new Error('Connection failed'));
 
       // Act
       await DatabaseService.initializeDatabase();
 
       // Assert
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Database connection failed:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Database connection failed:', expect.any(Error));
       expect(consoleLogSpy).toHaveBeenCalledWith(
         'App will continue without database functionality'
       );
@@ -66,7 +63,7 @@ describe('DatabaseService', () => {
 
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
-        query: jest.fn().mockResolvedValue({})
+        query: jest.fn().mockResolvedValue({}),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
@@ -79,9 +76,17 @@ describe('DatabaseService', () => {
 
       expect(mockRequest.input).toHaveBeenCalledWith('id', expect.any(Function), id);
       expect(mockRequest.input).toHaveBeenCalledWith('slug', expect.any(Function), slug);
-      expect(mockRequest.input).toHaveBeenCalledWith('checklist', expect.any(Function), JSON.stringify(checklist));
+      expect(mockRequest.input).toHaveBeenCalledWith(
+        'checklist',
+        expect.any(Function),
+        JSON.stringify(checklist)
+      );
       expect(mockRequest.input).toHaveBeenCalledWith('role', expect.any(Function), role);
-      expect(mockRequest.input).toHaveBeenCalledWith('department', expect.any(Function), department);
+      expect(mockRequest.input).toHaveBeenCalledWith(
+        'department',
+        expect.any(Function),
+        department
+      );
 
       expect(mockRequest.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO checklists')
@@ -92,7 +97,7 @@ describe('DatabaseService', () => {
       // Arrange
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
-        query: jest.fn().mockRejectedValue(new Error('Insert failed'))
+        query: jest.fn().mockRejectedValue(new Error('Insert failed')),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
@@ -107,7 +112,7 @@ describe('DatabaseService', () => {
       // Arrange
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
-        query: jest.fn().mockResolvedValue({})
+        query: jest.fn().mockResolvedValue({}),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
@@ -132,14 +137,14 @@ describe('DatabaseService', () => {
         checklist: JSON.stringify([{ task: 'Test task', completed: false }]),
         role: 'Developer',
         department: 'Engineering',
-        createdAt: new Date('2023-01-01')
+        createdAt: new Date('2023-01-01'),
       };
 
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
         query: jest.fn().mockResolvedValue({
-          recordset: [mockChecklistRow]
-        })
+          recordset: [mockChecklistRow],
+        }),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
@@ -152,7 +157,7 @@ describe('DatabaseService', () => {
         checklist: [{ task: 'Test task', completed: false }], // Parsed JSON
         role: 'Developer',
         department: 'Engineering',
-        createdAt: mockChecklistRow.createdAt
+        createdAt: mockChecklistRow.createdAt,
       });
 
       expect(mockRequest.input).toHaveBeenCalledWith('slug', expect.any(Function), slug);
@@ -164,12 +169,12 @@ describe('DatabaseService', () => {
     test('should return null for non-existent slug', async () => {
       // Arrange
       const slug = 'nonexistent';
-      
+
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
         query: jest.fn().mockResolvedValue({
-          recordset: [] // Empty result
-        })
+          recordset: [], // Empty result
+        }),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
@@ -190,37 +195,35 @@ describe('DatabaseService', () => {
         checklist: 'invalid json{',
         role: 'Developer',
         department: 'Engineering',
-        createdAt: new Date('2023-01-01')
+        createdAt: new Date('2023-01-01'),
       };
 
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
         query: jest.fn().mockResolvedValue({
-          recordset: [mockChecklistRow]
-        })
+          recordset: [mockChecklistRow],
+        }),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
 
       // Act & Assert
-      await expect(DatabaseService.getChecklistBySlug(slug))
-        .rejects.toThrow();
+      await expect(DatabaseService.getChecklistBySlug(slug)).rejects.toThrow();
     });
 
     test('should handle database query errors', async () => {
       // Arrange
       const slug = 'test123';
-      
+
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
-        query: jest.fn().mockRejectedValue(new Error('Query failed'))
+        query: jest.fn().mockRejectedValue(new Error('Query failed')),
       };
 
       sql.Request = jest.fn().mockReturnValue(mockRequest);
 
       // Act & Assert
-      await expect(DatabaseService.getChecklistBySlug(slug))
-        .rejects.toThrow('Query failed');
+      await expect(DatabaseService.getChecklistBySlug(slug)).rejects.toThrow('Query failed');
     });
   });
 
