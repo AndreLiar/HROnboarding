@@ -279,12 +279,11 @@ jobs:
           echo "✅ Lightweight deployment package created (Azure will handle npm install)"
         working-directory: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      - name: Move deployment package for upload and deployment
+      - name: Verify deployment package location
         run: |
-          echo "📦 Moving deployment package to root directory..."
-          mv api-deployment.zip ./api-deployment.zip
+          echo "📦 Verifying deployment package location..."
           ls -lh ./api-deployment.zip
-          echo "✅ Deployment package ready at root level"
+          echo "✅ Deployment package ready for upload and deployment"
 
       - name: Upload API artifacts
         uses: actions/upload-artifact@v4
