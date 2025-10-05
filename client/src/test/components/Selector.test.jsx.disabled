@@ -1,0 +1,222 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import Selector from '../../components/Selector.jsx';
+
+describe('Selector Component', () => {
+  let mockOnGenerate;
+  let user;
+
+  beforeEach(() => {
+    mockOnGenerate = vi.fn();
+    user = userEvent.setup();
+  });
+
+  describe('Rendering', () => {
+    it('renders role and department selectors', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      expect(screen.getByText('Rôle')).toBeInTheDocument();
+      expect(screen.getByText('Département')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /générer/i })).toBeInTheDocument();
+    });
+
+    it('renders with initial values when provided', () => {
+      render(
+        <Selector 
+          onGenerate={mockOnGenerate} 
+          loading={false}
+          initialRole="Développeur Junior"
+          initialDepartment="Informatique"
+        />
+      );
+      
+      expect(screen.getByDisplayValue('Développeur Junior')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Informatique')).toBeInTheDocument();
+    });
+
+    it('shows Psychology icon on generate button', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const button = screen.getByRole('button', { name: /générer/i });
+      expect(button.querySelector('svg')).toBeInTheDocument();
+    });
+  });
+
+  describe('Role Selection', () => {
+    it('displays all available roles in dropdown', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const roleSelect = screen.getByLabelText('Rôle');
+      await user.click(roleSelect);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Développeur Junior')).toBeInTheDocument();
+        expect(screen.getByText('Développeur Senior')).toBeInTheDocument();
+        expect(screen.getByText('Chef de Projet')).toBeInTheDocument();
+        expect(screen.getByText('Analyste Business')).toBeInTheDocument();
+        expect(screen.getByText('Responsable RH')).toBeInTheDocument();
+      });
+    });
+
+    it('updates role selection when option is clicked', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const roleSelect = screen.getByLabelText('Rôle');
+      await user.click(roleSelect);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Développeur Senior')).toBeInTheDocument();
+      });
+      
+      await user.click(screen.getByText('Développeur Senior'));
+      
+      expect(screen.getByDisplayValue('Développeur Senior')).toBeInTheDocument();
+    });
+  });
+
+  describe('Department Selection', () => {
+    it('displays all available departments in dropdown', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const deptSelect = screen.getByLabelText('Département');
+      await user.click(deptSelect);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Informatique')).toBeInTheDocument();
+        expect(screen.getByText('Ressources Humaines')).toBeInTheDocument();
+        expect(screen.getByText('Finance')).toBeInTheDocument();
+        expect(screen.getByText('Commercial')).toBeInTheDocument();
+        expect(screen.getByText('Marketing')).toBeInTheDocument();
+      });
+    });
+
+    it('updates department selection when option is clicked', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const deptSelect = screen.getByLabelText('Département');
+      await user.click(deptSelect);
+      
+      await waitFor(() => {
+        expect(screen.getByText('Finance')).toBeInTheDocument();
+      });
+      
+      await user.click(screen.getByText('Finance'));
+      
+      expect(screen.getByDisplayValue('Finance')).toBeInTheDocument();
+    });
+  });
+
+  describe('Generate Button Behavior', () => {
+    it('is disabled when no role is selected', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const button = screen.getByRole('button', { name: /générer/i });
+      expect(button).toBeDisabled();
+    });
+
+    it('is disabled when no department is selected', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const roleSelect = screen.getByLabelText('Rôle');
+      await user.click(roleSelect);
+      await waitFor(() => screen.getByText('Développeur Junior'));
+      await user.click(screen.getByText('Développeur Junior'));
+      
+      const button = screen.getByRole('button', { name: /générer/i });
+      expect(button).toBeDisabled();
+    });
+
+    it('is enabled when both role and department are selected', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      // Select role
+      const roleSelect = screen.getByLabelText('Rôle');
+      await user.click(roleSelect);
+      await waitFor(() => screen.getByText('Développeur Junior'));
+      await user.click(screen.getByText('Développeur Junior'));
+      
+      // Select department
+      const deptSelect = screen.getByLabelText('Département');
+      await user.click(deptSelect);
+      await waitFor(() => screen.getByText('Informatique'));
+      await user.click(screen.getByText('Informatique'));
+      
+      const button = screen.getByRole('button', { name: /générer/i });
+      expect(button).toBeEnabled();
+    });
+
+    it('is disabled during loading', () => {
+      render(
+        <Selector 
+          onGenerate={mockOnGenerate} 
+          loading={true}
+          initialRole="Développeur Junior"
+          initialDepartment="Informatique"
+        />
+      );
+      
+      const button = screen.getByRole('button', { name: /génération/i });
+      expect(button).toBeDisabled();
+    });
+
+    it('calls onGenerate with selected values when clicked', async () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      // Select role
+      const roleSelect = screen.getByLabelText('Rôle');
+      await user.click(roleSelect);
+      await waitFor(() => screen.getByText('Chef de Projet'));
+      await user.click(screen.getByText('Chef de Projet'));
+      
+      // Select department
+      const deptSelect = screen.getByLabelText('Département');
+      await user.click(deptSelect);
+      await waitFor(() => screen.getByText('Marketing'));
+      await user.click(screen.getByText('Marketing'));
+      
+      // Click generate
+      const button = screen.getByRole('button', { name: /générer/i });
+      await user.click(button);
+      
+      expect(mockOnGenerate).toHaveBeenCalledWith('Chef de Projet', 'Marketing');
+    });
+  });
+
+  describe('Loading States', () => {
+    it('shows loading text when loading is true', () => {
+      render(
+        <Selector 
+          onGenerate={mockOnGenerate} 
+          loading={true}
+          initialRole="Développeur Junior"
+          initialDepartment="Informatique"
+        />
+      );
+      
+      expect(screen.getByText('Génération...')).toBeInTheDocument();
+    });
+
+    it('shows normal text when loading is false', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      expect(screen.getByText('Générer')).toBeInTheDocument();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('has proper form labels', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      expect(screen.getByLabelText('Rôle')).toBeInTheDocument();
+      expect(screen.getByLabelText('Département')).toBeInTheDocument();
+    });
+
+    it('generate button has proper button role', () => {
+      render(<Selector onGenerate={mockOnGenerate} loading={false} />);
+      
+      const button = screen.getByRole('button', { name: /générer/i });
+      expect(button).toBeInTheDocument();
+    });
+  });
+});

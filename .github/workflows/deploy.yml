@@ -148,7 +148,7 @@ jobs:
         working-directory: ./api
 
       - name: Run Client tests
-        run: npm test
+        run: npm run test:ci
         working-directory: ./client
 
       - name: Build Client

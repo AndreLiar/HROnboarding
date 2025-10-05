@@ -1,0 +1,296 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import Share from '../../components/Share.jsx';
+
+describe('Share Component', () => {
+  let mockOnShare;
+  let user;
+  let defaultProps;
+
+  beforeEach(() => {
+    mockOnShare = vi.fn();
+    user = userEvent.setup();
+    defaultProps = {
+      onShare: mockOnShare,
+      shareSlug: null,
+      loading: false
+    };
+
+    // Reset clipboard mock
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+  });
+
+  describe('Initial State (No Share Slug)', () => {
+    it('renders share generation interface', () => {
+      render(<Share {...defaultProps} />);
+      
+      expect(screen.getByText('Partager la Checklist')).toBeInTheDocument();
+      expect(screen.getByText('Générez un lien de partage pour cette checklist')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /générer le lien de partage/i })).toBeInTheDocument();
+    });
+
+    it('shows Share icon on generate button', () => {
+      render(<Share {...defaultProps} />);
+      
+      const button = screen.getByRole('button', { name: /générer le lien de partage/i });
+      expect(button.querySelector('svg')).toBeInTheDocument();
+    });
+
+    it('calls onShare when generate button is clicked', async () => {
+      render(<Share {...defaultProps} />);
+      
+      const button = screen.getByRole('button', { name: /générer le lien de partage/i });
+      await user.click(button);
+      
+      expect(mockOnShare).toHaveBeenCalledTimes(1);
+    });
+
+    it('button is full width', () => {
+      render(<Share {...defaultProps} />);
+      
+      const button = screen.getByRole('button', { name: /générer le lien de partage/i });
+      expect(button).toHaveStyle({ width: '100%' });
+    });
+  });
+
+  describe('Loading State', () => {
+    it('shows loading text when loading is true', () => {
+      render(<Share {...defaultProps} loading={true} />);
+      
+      expect(screen.getByText('Génération du lien...')).toBeInTheDocument();
+    });
+
+    it('disables button when loading is true', () => {
+      render(<Share {...defaultProps} loading={true} />);
+      
+      const button = screen.getByRole('button', { name: /génération du lien/i });
+      expect(button).toBeDisabled();
+    });
+
+    it('shows normal text when loading is false', () => {
+      render(<Share {...defaultProps} />);
+      
+      expect(screen.getByText('Générer le lien de partage')).toBeInTheDocument();
+    });
+  });
+
+  describe('Share Slug State (Generated Link)', () => {
+    beforeEach(() => {
+      defaultProps.shareSlug = 'test-slug-123';
+    });
+
+    it('renders success message', () => {
+      render(<Share {...defaultProps} />);
+      
+      expect(screen.getByText('Lien de partage généré avec succès !')).toBeInTheDocument();
+    });
+
+    it('renders share URL in text field', () => {
+      render(<Share {...defaultProps} />);
+      
+      const input = screen.getByLabelText('Lien de partage');
+      expect(input).toHaveValue('http://localhost:3000/c/test-slug-123');
+    });
+
+    it('text field is read-only', () => {
+      render(<Share {...defaultProps} />);
+      
+      const input = screen.getByLabelText('Lien de partage');
+      expect(input).toHaveProperty('readOnly', true);
+    });
+
+    it('shows copy button with ContentCopy icon', () => {
+      render(<Share {...defaultProps} />);
+      
+      const copyIcon = screen.getByTestId('ContentCopyIcon');
+      expect(copyIcon).toBeInTheDocument();
+      expect(copyIcon.closest('button')).toBeInTheDocument();
+    });
+
+    it('shows instruction text', () => {
+      render(<Share {...defaultProps} />);
+      
+      expect(screen.getByText("Cliquez sur l'icône pour copier le lien")).toBeInTheDocument();
+    });
+  });
+
+  describe('Clipboard Functionality', () => {
+    beforeEach(() => {
+      defaultProps.shareSlug = 'test-slug-123';
+    });
+
+    it('copies URL to clipboard when copy button is clicked', async () => {
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('http://localhost:3000/c/test-slug-123');
+    });
+
+    it('shows success feedback after copying', async () => {
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText('✓ Lien copié dans le presse-papiers')).toBeInTheDocument();
+      });
+    });
+
+    it('changes copy icon to check icon after copying', async () => {
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      await waitFor(() => {
+        expect(copyButton.querySelector('[data-testid="CheckCircleIcon"]')).toBeInTheDocument();
+      });
+    });
+
+    it('copy button changes color to success after copying', async () => {
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      await waitFor(() => {
+        expect(copyButton).toHaveClass('MuiIconButton-colorSuccess');
+      });
+    });
+
+    it('resets copy state after 2 seconds', async () => {
+      vi.useFakeTimers();
+      
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      await waitFor(() => {
+        expect(screen.getByText('✓ Lien copié dans le presse-papiers')).toBeInTheDocument();
+      });
+      
+      // Fast-forward time by 2 seconds
+      vi.advanceTimersByTime(2000);
+      
+      await waitFor(() => {
+        expect(screen.getByText("Cliquez sur l'icône pour copier le lien")).toBeInTheDocument();
+      });
+      
+      vi.useRealTimers();
+    });
+
+    it('handles clipboard write failure gracefully', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      navigator.clipboard.writeText.mockRejectedValueOnce(new Error('Clipboard access denied'));
+      
+      render(<Share {...defaultProps} />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      await user.click(copyButton);
+      
+      await waitFor(() => {
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to copy:', expect.any(Error));
+      });
+      
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('URL Generation', () => {
+    it('generates correct URL with current origin', () => {
+      window.location.origin = 'https://example.com';
+      render(<Share {...defaultProps} shareSlug="my-checklist-123" />);
+      
+      const input = screen.getByLabelText('Lien de partage');
+      expect(input).toHaveValue('https://example.com/c/my-checklist-123');
+    });
+
+    it('handles empty shareSlug gracefully', () => {
+      render(<Share {...defaultProps} shareSlug="" />);
+      
+      const input = screen.getByLabelText('Lien de partage');
+      expect(input).toHaveValue('http://localhost:3000/c/');
+    });
+  });
+
+  describe('Component States Transition', () => {
+    it('transitions from initial to generated state correctly', () => {
+      const { rerender } = render(<Share {...defaultProps} />);
+      
+      // Initial state
+      expect(screen.getByText('Générez un lien de partage pour cette checklist')).toBeInTheDocument();
+      
+      // Update to generated state
+      rerender(<Share {...defaultProps} shareSlug="new-slug" />);
+      
+      expect(screen.getByText('Lien de partage généré avec succès !')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('http://localhost:3000/c/new-slug')).toBeInTheDocument();
+    });
+
+    it('transitions from loading to generated state correctly', () => {
+      const { rerender } = render(<Share {...defaultProps} loading={true} />);
+      
+      // Loading state
+      expect(screen.getByText('Génération du lien...')).toBeInTheDocument();
+      
+      // Generated state
+      rerender(<Share {...defaultProps} loading={false} shareSlug="final-slug" />);
+      
+      expect(screen.getByText('Lien de partage généré avec succès !')).toBeInTheDocument();
+    });
+  });
+
+  describe('Accessibility', () => {
+    it('has proper heading structure', () => {
+      render(<Share {...defaultProps} />);
+      
+      expect(screen.getByRole('heading', { name: 'Partager la Checklist' })).toBeInTheDocument();
+    });
+
+    it('text field has proper label', () => {
+      render(<Share {...defaultProps} shareSlug="test-slug" />);
+      
+      expect(screen.getByLabelText('Lien de partage')).toBeInTheDocument();
+    });
+
+    it('copy button has proper accessible name', () => {
+      render(<Share {...defaultProps} shareSlug="test-slug" />);
+      
+      const copyButton = screen.getByTestId('ContentCopyIcon').closest('button');
+      expect(copyButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Material UI Integration', () => {
+    it('uses Paper component with elevation', () => {
+      render(<Share {...defaultProps} />);
+      
+      const paper = document.querySelector('.MuiPaper-root');
+      expect(paper).toBeInTheDocument();
+      expect(paper).toHaveClass('MuiPaper-elevation2');
+    });
+
+    it('uses Alert component for success message', () => {
+      render(<Share {...defaultProps} shareSlug="test-slug" />);
+      
+      const alert = document.querySelector('.MuiAlert-standardSuccess');
+      expect(alert).toBeInTheDocument();
+    });
+
+    it('uses TextField with proper variant', () => {
+      render(<Share {...defaultProps} shareSlug="test-slug" />);
+      
+      const textField = document.querySelector('.MuiTextField-root');
+      expect(textField).toBeInTheDocument();
+    });
+  });
+});
