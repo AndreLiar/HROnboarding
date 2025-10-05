@@ -1,6 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import Selector from '../../components/Selector.jsx';
 import Checklist from '../../components/Checklist.jsx';
 import Share from '../../components/Share.jsx';

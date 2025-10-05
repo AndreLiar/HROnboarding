@@ -26,7 +26,7 @@ Object.defineProperty(window, 'location', {
 });
 
 // Global test utilities
-global.testUtils = {
+globalThis.testUtils = {
   // Common props for components
   createMockProps: (overrides = {}) => ({
     loading: false,
