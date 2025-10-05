@@ -464,11 +464,11 @@ jobs:
           # Wait for restart to complete
           sleep 30
           
-          # Check application logs for startup issues
-          echo "📋 Checking application startup logs..."
-          az webapp log tail \
+          # Check application logs for startup issues (with timeout)
+          echo "📋 Checking application startup logs for 60 seconds..."
+          timeout 60s az webapp log tail \
             --resource-group ${{ needs.version-and-setup.outputs.resource-group }} \
-            --name ${{ needs.version-and-setup.outputs.webapp-name }} || true
+            --name ${{ needs.version-and-setup.outputs.webapp-name }} || echo "✅ Log check completed (timeout after 60s)"
           
           # Deploy blue package with retry logic and extended timeout
           for attempt in {1..5}; do
