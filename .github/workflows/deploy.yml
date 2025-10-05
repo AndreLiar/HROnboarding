@@ -368,7 +368,7 @@ jobs:
           az webapp log config \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
-            --application-logging true \
+            --application-logging filesystem \
             --level verbose \
             --detailed-error-messages true \
             --failed-request-tracing true \
