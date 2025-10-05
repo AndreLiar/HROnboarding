@@ -139,7 +139,7 @@ server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`📍 Port ${PORT} is already in use`);
   }
-  process.exit(1);
+  throw new Error(`Server failed to start: ${err.message}`);
 });
 
 // Graceful shutdown
