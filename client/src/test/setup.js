@@ -35,12 +35,12 @@ globalThis.testUtils = {
   }),
 
   // Material UI theme wrapper
-  createMockChecklist: (length = 3) => 
+  createMockChecklist: (length = 3) =>
     Array.from({ length }, (_, i) => ({ étape: `Étape ${i + 1}` })),
 
   // Mock functions
   createMockFunction: () => vi.fn(),
-  
+
   // Wait for async operations
   waitFor: (callback, timeout = 1000) => {
     return new Promise((resolve, reject) => {

@@ -16,11 +16,11 @@ describe('Components Smoke Tests', () => {
     it('shows loading state correctly', () => {
       const mockOnGenerate = vi.fn();
       render(
-        <Selector 
-          onGenerate={mockOnGenerate} 
+        <Selector
+          onGenerate={mockOnGenerate}
           loading={true}
-          initialRole="Développeur Junior"
-          initialDepartment="Informatique"
+          initialRole='Développeur Junior'
+          initialDepartment='Informatique'
         />
       );
       expect(screen.getByText('Génération...')).toBeInTheDocument();
@@ -29,14 +29,11 @@ describe('Components Smoke Tests', () => {
 
   describe('Checklist Component', () => {
     const defaultProps = {
-      checklist: [
-        { étape: 'Étape 1' },
-        { étape: 'Étape 2' }
-      ],
+      checklist: [{ étape: 'Étape 1' }, { étape: 'Étape 2' }],
       role: 'Développeur Junior',
       department: 'Informatique',
       onChange: vi.fn(),
-      readOnly: false
+      readOnly: false,
     };
 
     it('renders without crashing', () => {
@@ -68,39 +65,23 @@ describe('Components Smoke Tests', () => {
   describe('Share Component', () => {
     it('renders initial state without crashing', () => {
       const mockOnShare = vi.fn();
-      render(
-        <Share 
-          onShare={mockOnShare}
-          shareSlug={null}
-          loading={false}
-        />
-      );
+      render(<Share onShare={mockOnShare} shareSlug={null} loading={false} />);
       expect(screen.getByText('Partager la Checklist')).toBeInTheDocument();
-      expect(screen.getByText('Générez un lien de partage pour cette checklist')).toBeInTheDocument();
+      expect(
+        screen.getByText('Générez un lien de partage pour cette checklist')
+      ).toBeInTheDocument();
     });
 
     it('renders generated state without crashing', () => {
       const mockOnShare = vi.fn();
-      render(
-        <Share 
-          onShare={mockOnShare}
-          shareSlug="test-slug-123"
-          loading={false}
-        />
-      );
+      render(<Share onShare={mockOnShare} shareSlug='test-slug-123' loading={false} />);
       expect(screen.getByText('Lien de partage généré avec succès !')).toBeInTheDocument();
       expect(screen.getByDisplayValue('http://localhost:3000/c/test-slug-123')).toBeInTheDocument();
     });
 
     it('shows loading state correctly', () => {
       const mockOnShare = vi.fn();
-      render(
-        <Share 
-          onShare={mockOnShare}
-          shareSlug={null}
-          loading={true}
-        />
-      );
+      render(<Share onShare={mockOnShare} shareSlug={null} loading={true} />);
       expect(screen.getByText('Génération du lien...')).toBeInTheDocument();
     });
   });
@@ -116,17 +97,13 @@ describe('Components Smoke Tests', () => {
       render(
         <div>
           <Selector onGenerate={mockOnGenerate} loading={false} />
-          <Checklist 
+          <Checklist
             checklist={checklist}
-            role="Test Role"
-            department="Test Dept"
+            role='Test Role'
+            department='Test Dept'
             onChange={mockOnChange}
           />
-          <Share 
-            onShare={mockOnShare}
-            shareSlug={null}
-            loading={false}
-          />
+          <Share onShare={mockOnShare} shareSlug={null} loading={false} />
         </div>
       );
 
