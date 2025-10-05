@@ -1,6 +1,9 @@
 const TemplateAIService = require('../services/templateAIService');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const sql = require('mssql');
+
+// Use crypto.randomUUID() as a replacement for uuid v4
+const uuidv4 = () => crypto.randomUUID();
 
 class TemplateAIController {
   /**

@@ -1,5 +1,8 @@
 const sql = require('mssql');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+
+// Use crypto.randomUUID() as a replacement for uuid v4
+const uuidv4 = () => crypto.randomUUID();
 
 class TemplateApprovalController {
   /**
