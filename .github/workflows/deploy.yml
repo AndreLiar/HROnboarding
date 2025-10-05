@@ -143,8 +143,8 @@ jobs:
         run: npm audit --audit-level=moderate
         working-directory: ./client
 
-      - name: Run API tests
-        run: npm test
+      - name: Run API unit tests
+        run: npm run test:ci
         working-directory: ./api
 
       - name: Run Client tests

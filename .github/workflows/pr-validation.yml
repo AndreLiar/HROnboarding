@@ -37,8 +37,8 @@ jobs:
         run: npm run lint || true
         working-directory: ./client
 
-      - name: Run API tests
-        run: npm test || true
+      - name: Run API unit tests
+        run: npm run test:unit || true
         working-directory: ./api
 
       - name: Run Client tests
