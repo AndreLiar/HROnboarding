@@ -41,7 +41,7 @@ try {
   console.log('✅ Routes set');
 
   console.log('✅ Step 5: Starting server...');
-  const server = app.listen(PORT, () => {
+  app.listen(PORT, () => {
     console.log(`🚀 Diagnostic server running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log(`✅ Diagnostic server started successfully`);
@@ -52,5 +52,5 @@ try {
 } catch (error) {
   console.error('❌ Error during startup:', error);
   console.error('Stack trace:', error.stack);
-  process.exit(1);
+  throw error;
 }
