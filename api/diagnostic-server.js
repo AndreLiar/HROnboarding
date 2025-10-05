@@ -24,18 +24,18 @@ try {
 
   console.log('✅ Step 4: Setting up basic route...');
   app.get('/', (req, res) => {
-    res.json({ 
-      status: 'OK', 
+    res.json({
+      status: 'OK',
       message: 'Diagnostic server running',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   });
 
   app.get('/health', (req, res) => {
-    res.json({ 
-      status: 'OK', 
+    res.json({
+      status: 'OK',
       timestamp: new Date().toISOString(),
-      diagnostic: true
+      diagnostic: true,
     });
   });
   console.log('✅ Routes set');
@@ -48,7 +48,6 @@ try {
   });
 
   console.log('✅ Server setup complete');
-
 } catch (error) {
   console.error('❌ Error during startup:', error);
   console.error('Stack trace:', error.stack);
