@@ -315,7 +315,9 @@ jobs:
               SCM_DO_BUILD_DURING_DEPLOYMENT="true" \
               ENABLE_ORYX_BUILD="true" \
               ORYX_PLATFORM_NAME="nodejs" \
-              ORYX_PLATFORM_VERSION="20"
+              ORYX_PLATFORM_VERSION="20" \
+              WEBSITES_ENABLE_APP_SERVICE_STORAGE="false" \
+              WEBSITE_ENABLE_SYNC_UPDATE_SITE="true"
           
           # Step 3: Set application environment variables
           echo "🔧 Setting application environment variables..."
@@ -359,9 +361,20 @@ jobs:
           az webapp config set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
-            --startup-file "node server.js"
+            --startup-file "node diagnostic-server.js"
           
-          # Step 6: Clear any deployment cache and restart
+          # Step 6: Enable diagnostic logging
+          echo "🔍 Enabling diagnostic logging..."
+          az webapp log config \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --application-logging true \
+            --level verbose \
+            --detailed-error-messages true \
+            --failed-request-tracing true \
+            --web-server-logging filesystem
+          
+          # Step 7: Clear any deployment cache and restart
           echo "🔄 Clearing cache and restarting app..."
           az webapp stop \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
@@ -386,12 +399,12 @@ jobs:
           for attempt in {1..3}; do
             echo "🔄 Deployment attempt $attempt/3"
             
-            if timeout 600 az webapp deploy \
+            if timeout 300 az webapp deploy \
               --resource-group ${{ needs.setup.outputs.resource-group }} \
               --name ${{ needs.setup.outputs.webapp-name }} \
               --src-path ./api-deployment.zip \
               --type zip \
-              --timeout 600; then
+              --timeout 300; then
               echo "✅ Deployment completed successfully"
               break
             else
