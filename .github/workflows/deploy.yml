@@ -361,7 +361,7 @@ jobs:
           az webapp config set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
-            --startup-file "node diagnostic-server.js"
+            --startup-file "node server.js"
           
           # Step 6: Enable diagnostic logging
           echo "🔍 Enabling diagnostic logging..."
