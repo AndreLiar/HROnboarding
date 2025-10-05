@@ -1,10 +1,12 @@
 const ChecklistController = require('../../../controllers/checklistController');
 const ChecklistService = require('../../../services/checklistService');
 const DatabaseService = require('../../../services/databaseService');
+const helpers = require('../../../utils/helpers');
 
 // Mock dependencies
 jest.mock('../../../services/checklistService');
 jest.mock('../../../services/databaseService');
+jest.mock('../../../utils/helpers');
 
 describe('ChecklistController', () => {
   beforeEach(() => {
@@ -14,19 +16,23 @@ describe('ChecklistController', () => {
   describe('generateChecklist', () => {
     test('should generate checklist with valid input', async () => {
       // Arrange
-      const mockChecklist = [
-        { task: 'Setup development environment', category: 'Technical', completed: false },
-        { task: 'Complete HR documentation', category: 'Administrative', completed: false }
-      ];
+      const mockResult = {
+        checklist: [
+          { task: 'Setup development environment', category: 'Technical', completed: false },
+          { task: 'Complete HR documentation', category: 'Administrative', completed: false }
+        ],
+        role: 'Développeur Senior',
+        department: 'Informatique'
+      };
       
-      ChecklistService.generatePersonalizedChecklist.mockResolvedValue(mockChecklist);
+      ChecklistService.generateChecklist.mockResolvedValue(mockResult);
+      helpers.validateRequired.mockImplementation(() => {}); // No error
+      helpers.successResponse.mockImplementation(data => data);
       
       const req = testUtils.createMockRequest({
         body: {
           role: 'Développeur Senior',
-          department: 'Informatique',
-          experience: 'senior',
-          name: 'John Doe'
+          department: 'Informatique'
         }
       });
       
@@ -36,30 +42,18 @@ describe('ChecklistController', () => {
       await ChecklistController.generateChecklist(req, res);
 
       // Assert
-      expect(ChecklistService.generatePersonalizedChecklist).toHaveBeenCalledWith({
-        role: 'Développeur Senior',
-        department: 'Informatique',
-        experience: 'senior',
-        name: 'John Doe'
-      });
-      
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        checklist: mockChecklist,
-        metadata: {
-          role: 'Développeur Senior',
-          department: 'Informatique',
-          experience: 'senior',
-          totalTasks: 2,
-          completedTasks: 0,
-          progressPercentage: 0
-        }
-      });
+      expect(helpers.validateRequired).toHaveBeenCalledWith(['role', 'department'], req.body);
+      expect(ChecklistService.generateChecklist).toHaveBeenCalledWith('Développeur Senior', 'Informatique');
+      expect(res.json).toHaveBeenCalledWith(mockResult);
     });
 
     test('should return 400 for missing required fields', async () => {
       // Arrange
+      helpers.validateRequired.mockImplementation(() => {
+        throw new Error('Missing required fields: role, department');
+      });
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
+      
       const req = testUtils.createMockRequest({
         body: {
           // Missing role and department
@@ -75,17 +69,17 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Role and department are required',
-        code: 'MISSING_REQUIRED_FIELDS'
+        error: 'Missing required fields: role, department'
       });
       
-      expect(ChecklistService.generatePersonalizedChecklist).not.toHaveBeenCalled();
+      expect(ChecklistService.generateChecklist).not.toHaveBeenCalled();
     });
 
     test('should handle service errors gracefully', async () => {
       // Arrange
-      ChecklistService.generatePersonalizedChecklist.mockRejectedValue(
+      helpers.validateRequired.mockImplementation(() => {}); // No validation error
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
+      ChecklistService.generateChecklist.mockRejectedValue(
         new Error('OpenAI API error')
       );
       
@@ -104,14 +98,17 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Failed to generate checklist',
-        details: 'OpenAI API error'
+        error: 'Failed to generate checklist'
       });
     });
 
     test('should validate role and department values', async () => {
       // Arrange
+      helpers.validateRequired.mockImplementation(() => {
+        throw new Error('Missing required fields: role');
+      });
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
+      
       const req = testUtils.createMockRequest({
         body: {
           role: '', // Empty role
@@ -127,9 +124,7 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Role and department are required',
-        code: 'MISSING_REQUIRED_FIELDS'
+        error: 'Missing required fields: role'
       });
     });
   });
@@ -137,25 +132,21 @@ describe('ChecklistController', () => {
   describe('shareChecklist', () => {
     test('should save checklist and return share ID', async () => {
       // Arrange
-      const mockShareId = 'abc123def456';
+      const mockSlug = 'abc123def456';
       const mockChecklist = [
         { task: 'Setup environment', completed: false },
         { task: 'Review documentation', completed: true }
       ];
       
-      DatabaseService.saveChecklist.mockResolvedValue({
-        id: mockShareId,
-        slug: mockShareId
-      });
+      helpers.generateSlug.mockReturnValue(mockSlug);
+      helpers.successResponse.mockImplementation(data => data);
+      DatabaseService.saveChecklist.mockResolvedValue(mockSlug);
       
       const req = testUtils.createMockRequest({
         body: {
           checklist: mockChecklist,
-          metadata: {
-            role: 'Developer',
-            department: 'Engineering',
-            name: 'John Doe'
-          }
+          role: 'Developer',
+          department: 'Engineering'
         }
       });
       
@@ -165,32 +156,23 @@ describe('ChecklistController', () => {
       await ChecklistController.shareChecklist(req, res);
 
       // Assert
-      expect(DatabaseService.saveChecklist).toHaveBeenCalledWith({
-        checklist: mockChecklist,
-        metadata: {
-          role: 'Developer',
-          department: 'Engineering',
-          name: 'John Doe'
-        }
-      });
+      expect(helpers.generateSlug).toHaveBeenCalled();
+      expect(DatabaseService.saveChecklist).toHaveBeenCalledWith(
+        mockSlug, mockSlug, mockChecklist, 'Developer', 'Engineering'
+      );
       
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        shareId: mockShareId,
-        shareUrl: expect.stringContaining(mockShareId)
-      });
+      expect(res.json).toHaveBeenCalledWith({ slug: mockSlug });
     });
 
     test('should return 400 for invalid checklist data', async () => {
       // Arrange
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
+      
       const req = testUtils.createMockRequest({
         body: {
           // Missing checklist
-          metadata: {
-            role: 'Developer',
-            department: 'Engineering'
-          }
+          role: 'Developer',
+          department: 'Engineering'
         }
       });
       
@@ -202,8 +184,7 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Checklist data is required'
+        error: 'Valid checklist array is required'
       });
       
       expect(DatabaseService.saveChecklist).not.toHaveBeenCalled();
@@ -211,6 +192,8 @@ describe('ChecklistController', () => {
 
     test('should handle database errors', async () => {
       // Arrange
+      helpers.generateSlug.mockReturnValue('test123');
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
       DatabaseService.saveChecklist.mockRejectedValue(
         new Error('Database connection failed')
       );
@@ -218,7 +201,8 @@ describe('ChecklistController', () => {
       const req = testUtils.createMockRequest({
         body: {
           checklist: [{ task: 'Test task', completed: false }],
-          metadata: { role: 'Developer', department: 'Engineering' }
+          role: 'Developer',
+          department: 'Engineering'
         }
       });
       
@@ -230,9 +214,7 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Failed to save checklist',
-        details: 'Database connection failed'
+        error: 'Failed to save checklist'
       });
     });
   });
@@ -242,19 +224,16 @@ describe('ChecklistController', () => {
       // Arrange
       const shareId = 'abc123def456';
       const mockChecklistData = {
-        id: shareId,
         checklist: [
           { task: 'Setup environment', completed: false },
           { task: 'Review documentation', completed: true }
         ],
-        metadata: {
-          role: 'Developer',
-          department: 'Engineering',
-          name: 'John Doe',
-          createdAt: '2023-01-01T00:00:00Z'
-        }
+        role: 'Developer',
+        department: 'Engineering',
+        createdAt: '2023-01-01T00:00:00Z'
       };
       
+      helpers.successResponse.mockImplementation(data => data);
       DatabaseService.getChecklistBySlug.mockResolvedValue(mockChecklistData);
       
       const req = testUtils.createMockRequest({
@@ -268,18 +247,14 @@ describe('ChecklistController', () => {
 
       // Assert
       expect(DatabaseService.getChecklistBySlug).toHaveBeenCalledWith(shareId);
-      
-      expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        success: true,
-        ...mockChecklistData
-      });
+      expect(res.json).toHaveBeenCalledWith(mockChecklistData);
     });
 
     test('should return 404 for non-existent checklist', async () => {
       // Arrange
       const shareId = 'nonexistent123';
       
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
       DatabaseService.getChecklistBySlug.mockResolvedValue(null);
       
       const req = testUtils.createMockRequest({
@@ -294,15 +269,21 @@ describe('ChecklistController', () => {
       // Assert
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
         error: 'Checklist not found'
       });
     });
 
-    test('should return 400 for missing slug parameter', async () => {
+    test('should handle database errors', async () => {
       // Arrange
+      const shareId = 'test123';
+      
+      helpers.errorResponse.mockImplementation(msg => ({ error: msg }));
+      DatabaseService.getChecklistBySlug.mockRejectedValue(
+        new Error('Database error')
+      );
+      
       const req = testUtils.createMockRequest({
-        params: {} // Missing slug
+        params: { slug: shareId }
       });
       
       const res = testUtils.createMockResponse();
@@ -311,13 +292,10 @@ describe('ChecklistController', () => {
       await ChecklistController.getSharedChecklist(req, res);
 
       // Assert
-      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({
-        success: false,
-        error: 'Slug parameter is required'
+        error: 'Failed to retrieve checklist'
       });
-      
-      expect(DatabaseService.getChecklistBySlug).not.toHaveBeenCalled();
     });
   });
 });

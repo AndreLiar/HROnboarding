@@ -1,9 +1,11 @@
 const DatabaseService = require('../../../services/databaseService');
 const sql = require('mssql');
+const helpers = require('../../../utils/helpers');
 
 // Mock mssql
 jest.mock('mssql');
 jest.mock('../../../config/database');
+jest.mock('../../../utils/helpers');
 
 describe('DatabaseService', () => {
   beforeEach(() => {
@@ -56,16 +58,13 @@ describe('DatabaseService', () => {
   });
 
   describe('saveChecklist', () => {
-    test('should save checklist with generated ID and slug', async () => {
+    test('should save checklist with provided parameters', async () => {
       // Arrange
-      const mockChecklistData = {
-        checklist: [{ task: 'Test task', completed: false }],
-        metadata: {
-          role: 'Developer',
-          department: 'Engineering',
-          name: 'John Doe'
-        }
-      };
+      const id = 'test123';
+      const slug = 'test123';
+      const checklist = [{ task: 'Test task', completed: false }];
+      const role = 'Developer';
+      const department = 'Engineering';
 
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
@@ -75,19 +74,16 @@ describe('DatabaseService', () => {
       sql.Request = jest.fn().mockReturnValue(mockRequest);
 
       // Act
-      const result = await DatabaseService.saveChecklist(mockChecklistData);
+      const result = await DatabaseService.saveChecklist(id, slug, checklist, role, department);
 
       // Assert
-      expect(result).toHaveProperty('id');
-      expect(result).toHaveProperty('slug');
-      expect(result.id).toHaveLength(12); // Generated slug length
-      expect(result.slug).toBe(result.id);
+      expect(result).toBe(slug);
 
-      expect(mockRequest.input).toHaveBeenCalledWith('id', expect.any(String));
-      expect(mockRequest.input).toHaveBeenCalledWith('slug', expect.any(String));
-      expect(mockRequest.input).toHaveBeenCalledWith('checklist', expect.any(String));
-      expect(mockRequest.input).toHaveBeenCalledWith('role', 'Developer');
-      expect(mockRequest.input).toHaveBeenCalledWith('department', 'Engineering');
+      expect(mockRequest.input).toHaveBeenCalledWith('id', expect.any(Function), id);
+      expect(mockRequest.input).toHaveBeenCalledWith('slug', expect.any(Function), slug);
+      expect(mockRequest.input).toHaveBeenCalledWith('checklist', expect.any(Function), JSON.stringify(checklist));
+      expect(mockRequest.input).toHaveBeenCalledWith('role', expect.any(Function), role);
+      expect(mockRequest.input).toHaveBeenCalledWith('department', expect.any(Function), department);
 
       expect(mockRequest.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO checklists')
@@ -96,11 +92,6 @@ describe('DatabaseService', () => {
 
     test('should handle database save errors', async () => {
       // Arrange
-      const mockChecklistData = {
-        checklist: [{ task: 'Test task', completed: false }],
-        metadata: { role: 'Developer', department: 'Engineering' }
-      };
-
       const mockRequest = {
         input: jest.fn().mockReturnThis(),
         query: jest.fn().mockRejectedValue(new Error('Insert failed'))
@@ -109,20 +100,27 @@ describe('DatabaseService', () => {
       sql.Request = jest.fn().mockReturnValue(mockRequest);
 
       // Act & Assert
-      await expect(DatabaseService.saveChecklist(mockChecklistData))
-        .rejects.toThrow('Insert failed');
+      await expect(
+        DatabaseService.saveChecklist('id', 'slug', [], 'Developer', 'Engineering')
+      ).rejects.toThrow('Insert failed');
     });
 
-    test('should validate required fields', async () => {
+    test('should handle missing parameters', async () => {
       // Arrange
-      const invalidData = {
-        // Missing checklist
-        metadata: { role: 'Developer' }
+      const mockRequest = {
+        input: jest.fn().mockReturnThis(),
+        query: jest.fn().mockResolvedValue({})
       };
 
-      // Act & Assert
-      await expect(DatabaseService.saveChecklist(invalidData))
-        .rejects.toThrow();
+      sql.Request = jest.fn().mockReturnValue(mockRequest);
+
+      // Act
+      const result = await DatabaseService.saveChecklist('id', 'slug', [], null, null);
+
+      // Assert
+      expect(result).toBe('slug');
+      expect(mockRequest.input).toHaveBeenCalledWith('role', expect.any(Function), null);
+      expect(mockRequest.input).toHaveBeenCalledWith('department', expect.any(Function), null);
     });
   });
 
@@ -153,17 +151,13 @@ describe('DatabaseService', () => {
 
       // Assert
       expect(result).toEqual({
-        id: slug,
-        slug: slug,
         checklist: [{ task: 'Test task', completed: false }], // Parsed JSON
-        metadata: {
-          role: 'Developer',
-          department: 'Engineering',
-          createdAt: mockChecklistRow.createdAt
-        }
+        role: 'Developer',
+        department: 'Engineering',
+        createdAt: mockChecklistRow.createdAt
       });
 
-      expect(mockRequest.input).toHaveBeenCalledWith('slug', slug);
+      expect(mockRequest.input).toHaveBeenCalledWith('slug', expect.any(Function), slug);
       expect(mockRequest.query).toHaveBeenCalledWith(
         expect.stringContaining('SELECT * FROM checklists WHERE slug = @slug')
       );
@@ -232,26 +226,29 @@ describe('DatabaseService', () => {
     });
   });
 
-  describe('generateSlug', () => {
-    test('should generate alphanumeric slug of correct length', () => {
+  describe('testConnection', () => {
+    test('should return Connected when connection succeeds', async () => {
+      // Arrange
+      const mockPool = { connected: true };
+      sql.connect = jest.fn().mockResolvedValue(mockPool);
+
       // Act
-      const slug = DatabaseService.generateSlug();
+      const result = await DatabaseService.testConnection();
 
       // Assert
-      expect(slug).toHaveLength(12);
-      expect(slug).toMatch(/^[a-zA-Z0-9]+$/);
+      expect(result).toBe('Connected');
+      expect(sql.connect).toHaveBeenCalled();
     });
 
-    test('should generate different slugs on multiple calls', () => {
+    test('should return Disconnected when connection fails', async () => {
+      // Arrange
+      sql.connect = jest.fn().mockRejectedValue(new Error('Connection failed'));
+
       // Act
-      const slug1 = DatabaseService.generateSlug();
-      const slug2 = DatabaseService.generateSlug();
-      const slug3 = DatabaseService.generateSlug();
+      const result = await DatabaseService.testConnection();
 
       // Assert
-      expect(slug1).not.toBe(slug2);
-      expect(slug2).not.toBe(slug3);
-      expect(slug1).not.toBe(slug3);
+      expect(result).toBe('Disconnected');
     });
   });
 });

@@ -332,6 +332,7 @@ jobs:
             --name ${{ needs.setup.outputs.webapp-name }} \
             --settings \
               NODE_ENV="production" \
+              
               PORT="8080" \
               DATABASE_SERVER="hr-onboarding-dev-r2x0-sql.database.windows.net" \
               DATABASE_NAME="hr-onboarding" \
