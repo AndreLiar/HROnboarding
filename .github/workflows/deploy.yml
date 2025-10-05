@@ -223,6 +223,7 @@ jobs:
   deploy-api:
     needs: [setup, test]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: 
       name: ${{ needs.setup.outputs.environment }}
       url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
@@ -316,7 +317,30 @@ jobs:
               ORYX_PLATFORM_NAME="nodejs" \
               ORYX_PLATFORM_VERSION="20"
           
-          # Step 3: Set npm configuration for production builds
+          # Step 3: Set application environment variables
+          echo "🔧 Setting application environment variables..."
+          az webapp config appsettings set \
+            --resource-group ${{ needs.setup.outputs.resource-group }} \
+            --name ${{ needs.setup.outputs.webapp-name }} \
+            --settings \
+              NODE_ENV="production" \
+              PORT="8080" \
+              DATABASE_SERVER="hr-onboarding-dev-r2x0-sql.database.windows.net" \
+              DATABASE_NAME="hr-onboarding" \
+              DATABASE_USERNAME="sqladmin" \
+              DATABASE_TYPE="mssql" \
+              DATABASE_PASSWORD="${{ secrets.DATABASE_PASSWORD }}" \
+              OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+              OPENAI_API_ENDPOINT="https://api.openai.com/v1" \
+              JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              JWT_EXPIRY="7d" \
+              EMAIL_USERNAME="${{ secrets.EMAIL_USERNAME }}" \
+              EMAIL_PASSWORD="${{ secrets.EMAIL_PASSWORD }}" \
+              EMAIL_HOST="smtp.gmail.com" \
+              EMAIL_PORT="587" \
+              BCRYPT_SALT_ROUNDS="12"
+          
+          # Step 4: Set npm configuration for production builds
           echo "📦 Configuring npm for production deployment..."
           az webapp config appsettings set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
@@ -330,14 +354,14 @@ jobs:
               NPM_CONFIG_CACHE="/tmp/npm-cache" \
               NPM_CONFIG_REGISTRY="https://registry.npmjs.org/"
           
-          # Step 4: Set startup configuration
+          # Step 5: Set startup configuration
           echo "🚀 Setting startup configuration..."
           az webapp config set \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
             --name ${{ needs.setup.outputs.webapp-name }} \
             --startup-file "npm start"
           
-          # Step 5: Clear any deployment cache and restart
+          # Step 6: Clear any deployment cache and restart
           echo "🔄 Clearing cache and restarting app..."
           az webapp stop \
             --resource-group ${{ needs.setup.outputs.resource-group }} \
