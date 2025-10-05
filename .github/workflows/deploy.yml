@@ -223,7 +223,7 @@ jobs:
   deploy-api:
     needs: [setup, test]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     environment: 
       name: ${{ needs.setup.outputs.environment }}
       url: https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net
@@ -424,26 +424,34 @@ jobs:
       - name: Verify deployment health
         run: |
           echo "🔍 Waiting for Azure to install dependencies and start application..."
-          sleep 60  # Give Azure more time to install npm packages
+          sleep 30  # Reduced wait time since app is already working
           
-          # Health check with retries (extended for npm install time)
+          # Health check with retries (optimized timing)
           HEALTH_URL="https://${{ needs.setup.outputs.webapp-name }}.azurewebsites.net/health"
           
-          for i in {1..10}; do
-            echo "Health check attempt $i/10..."
-            if curl -f -s --max-time 30 "$HEALTH_URL" > /dev/null; then
-              echo "✅ Application is healthy!"
-              curl -s "$HEALTH_URL" | jq .
+          for i in {1..6}; do
+            echo "Health check attempt $i/6..."
+            RESPONSE=$(curl -s -w "%{http_code}" --max-time 15 "$HEALTH_URL" 2>/dev/null || echo "000")
+            HTTP_CODE="${RESPONSE: -3}"
+            
+            if [[ "$HTTP_CODE" == "200" ]]; then
+              echo "✅ Application is healthy! (HTTP $HTTP_CODE)"
+              # Extract JSON response (everything except last 3 chars which are HTTP code)
+              JSON_RESPONSE="${RESPONSE%???}"
+              echo "Response: $JSON_RESPONSE"
               break
             else
-              echo "❌ Health check failed, waiting 45s for npm install..."
-              if [ $i -eq 10 ]; then
-                echo "🚨 Deployment health check failed after 10 attempts"
+              echo "❌ Health check failed with HTTP code: $HTTP_CODE"
+              if [ $i -eq 6 ]; then
+                echo "🚨 Deployment health check failed after 6 attempts"
+                echo "📋 Final check - trying direct curl..."
+                curl -v --max-time 10 "$HEALTH_URL" || true
                 echo "📋 Checking Azure logs for deployment issues..."
-                az webapp log tail --name ${{ needs.setup.outputs.webapp-name }} --resource-group ${{ needs.setup.outputs.resource-group }} || true
+                az webapp log tail --name ${{ needs.setup.outputs.webapp-name }} --resource-group ${{ needs.setup.outputs.resource-group }} --lines 20 || true
                 exit 1
               fi
-              sleep 45
+              echo "⏳ Waiting 20 seconds before retry..."
+              sleep 20
             fi
           done
 
