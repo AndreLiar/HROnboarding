@@ -9,12 +9,12 @@ const apiHandlers = [
   // Generate checklist endpoint
   http.post('/api/checklist/generate', async ({ request }) => {
     const body = await request.json();
-    
+
     if (!body.role || !body.department) {
       return new HttpResponse(
         JSON.stringify({
           success: false,
-          error: 'Role and department are required'
+          error: 'Role and department are required',
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
@@ -27,53 +27,53 @@ const apiHandlers = [
       success: true,
       data: {
         checklist: [
-          { étape: 'Accueil et présentation de l\'équipe' },
+          { étape: "Accueil et présentation de l'équipe" },
           { étape: 'Formation aux outils internes' },
-          { étape: 'Configuration de l\'environnement de travail' },
+          { étape: "Configuration de l'environnement de travail" },
           { étape: 'Lecture de la documentation projet' },
-          { étape: 'Premier code review' }
+          { étape: 'Premier code review' },
         ],
         role: body.role,
         department: body.department,
-        slug: `test-slug-${Date.now()}`
-      }
+        slug: `test-slug-${Date.now()}`,
+      },
     });
   }),
 
   // Share checklist endpoint
   http.post('/api/checklist/share', async ({ request }) => {
     const body = await request.json();
-    
+
     if (!body.checklist || !Array.isArray(body.checklist)) {
       return new HttpResponse(
         JSON.stringify({
           success: false,
-          error: 'Valid checklist is required'
+          error: 'Valid checklist is required',
         }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const slug = `shared-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     return HttpResponse.json({
       success: true,
       data: {
         slug,
-        shareUrl: `${window.location.origin}/c/${slug}`
-      }
+        shareUrl: `${window.location.origin}/c/${slug}`,
+      },
     });
   }),
 
   // Get shared checklist endpoint
   http.get('/api/checklist/shared/:slug', ({ params }) => {
     const { slug } = params;
-    
+
     if (slug === 'non-existent') {
       return new HttpResponse(
         JSON.stringify({
           success: false,
-          error: 'Checklist not found'
+          error: 'Checklist not found',
         }),
         { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
@@ -83,14 +83,14 @@ const apiHandlers = [
       success: true,
       data: {
         checklist: [
-          { étape: 'Accueil et présentation de l\'équipe' },
+          { étape: "Accueil et présentation de l'équipe" },
           { étape: 'Formation aux outils internes' },
-          { étape: 'Configuration de l\'environnement de travail' }
+          { étape: "Configuration de l'environnement de travail" },
         ],
         role: 'Shared Developer',
         department: 'Shared Department',
-        createdAt: new Date().toISOString()
-      }
+        createdAt: new Date().toISOString(),
+      },
     });
   }),
 
@@ -101,7 +101,7 @@ const apiHandlers = [
       timestamp: new Date().toISOString(),
       message: 'HR Onboarding API is healthy',
       version: '1.0.0',
-      uptime: 123.45
+      uptime: 123.45,
     });
   }),
 
@@ -110,11 +110,11 @@ const apiHandlers = [
     return new HttpResponse(
       JSON.stringify({
         success: false,
-        error: 'Simulated server error'
+        error: 'Simulated server error',
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
-  })
+  }),
 ];
 
 // Setup MSW server
@@ -123,10 +123,10 @@ const server = setupServer(...apiHandlers);
 // Global test utilities for integration tests
 globalThis.testUtils = {
   ...globalThis.testUtils,
-  
+
   // MSW server controls
   server,
-  
+
   // Mock API responses
   mockApiError: (endpoint, status = 500, message = 'Server error') => {
     server.use(
@@ -134,7 +134,7 @@ globalThis.testUtils = {
         return new HttpResponse(
           JSON.stringify({
             success: false,
-            error: message
+            error: message,
           }),
           { status, headers: { 'Content-Type': 'application/json' } }
         );
@@ -143,16 +143,20 @@ globalThis.testUtils = {
   },
 
   mockApiSuccess: (endpoint, method = 'get', data = {}) => {
-    const handler = method === 'post' ? http.post : 
-                   method === 'put' ? http.put :
-                   method === 'delete' ? http.delete :
-                   http.get;
-    
+    const handler =
+      method === 'post'
+        ? http.post
+        : method === 'put'
+          ? http.put
+          : method === 'delete'
+            ? http.delete
+            : http.get;
+
     server.use(
       handler(endpoint, () => {
         return HttpResponse.json({
           success: true,
-          data
+          data,
         });
       })
     );
@@ -161,18 +165,18 @@ globalThis.testUtils = {
   // Test data generators
   createMockChecklist: (count = 5) => {
     return Array.from({ length: count }, (_, i) => ({
-      étape: `Test étape ${i + 1}`
+      étape: `Test étape ${i + 1}`,
     }));
   },
 
   createMockGenerateRequest: () => ({
     role: 'Test Developer',
-    department: 'Test Department'
+    department: 'Test Department',
   }),
 
   // Wait for API calls
   waitForApiCall: async (timeout = 5000) => {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const start = Date.now();
       const check = () => {
         if (Date.now() - start >= timeout) {
@@ -206,7 +210,7 @@ globalThis.testUtils = {
   // Reset to default handlers
   resetHandlers: () => {
     server.resetHandlers(...apiHandlers);
-  }
+  },
 };
 
 // Setup and teardown
