@@ -12,6 +12,9 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ci": "vitest run --coverage --reporter=verbose",
+    "test:integration": "vitest run --config vitest.integration.config.js",
+    "test:integration:ui": "vitest --ui --config vitest.integration.config.js",
+    "test:integration:ci": "vitest run --coverage --reporter=verbose --config vitest.integration.config.js",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint src --ext .js,.jsx,.ts,.tsx --fix",
     "format": "prettier --write src",
@@ -40,6 +43,7 @@
     "eslint-plugin-react": "^7.34.1",
     "eslint-plugin-react-hooks": "^4.6.0",
     "jsdom": "^23.0.1",
+    "msw": "^2.1.2",
     "prettier": "^3.2.5",
     "vite": "^7.1.7",
     "vitest": "^3.2.4"
