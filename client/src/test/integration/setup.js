@@ -188,7 +188,7 @@ globalThis.testUtils = {
   // Network simulation
   simulateSlowNetwork: (delay = 2000) => {
     server.use(
-      http.all('*', async ({ request }) => {
+      http.all('*', async () => {
         await new Promise(resolve => setTimeout(resolve, delay));
         return HttpResponse.json({ delayed: true });
       })

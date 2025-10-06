@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import axios from 'axios';
+import React from 'react';
 
 // Import components that would be part of the main App
 import Selector from '../../components/Selector.jsx';
@@ -233,8 +234,8 @@ describe('Checklist Workflow Integration Tests', () => {
             .then(response => {
               setChecklist(response.data.data);
             })
-            .catch(error => {
-              console.error('Failed to load shared checklist:', error);
+            .catch(_error => {
+              console.error('Failed to load shared checklist:', _error);
             });
         }, []);
 
@@ -292,7 +293,7 @@ describe('Checklist Workflow Integration Tests', () => {
         
         React.useEffect(() => {
           mockedAxios.get('/api/checklist/shared/non-existent')
-            .then(response => {
+            .then(_response => {
               setLoading(false);
             })
             .catch(error => {
