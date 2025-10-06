@@ -318,6 +318,20 @@ describe('Checklist Workflow Integration Tests', () => {
   });
 
   describe('Copy to Clipboard Integration', () => {
+    beforeEach(() => {
+      // Reset clipboard mock for each test - use the same setup as in setup.js
+      vi.clearAllMocks();
+      
+      // Mock clipboard properly for Vitest
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: vi.fn(() => Promise.resolve()),
+          readText: vi.fn(() => Promise.resolve('mocked clipboard content')),
+        },
+        writable: true,
+      });
+    });
+
     it('should copy share URL to clipboard', async () => {
       const mockShareSlug = 'test-share-123';
 

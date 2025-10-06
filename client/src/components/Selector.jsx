@@ -47,8 +47,14 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
       <Grid container spacing={3}>
         <Grid item xs={12} md={5}>
           <FormControl fullWidth>
-            <InputLabel>Rôle</InputLabel>
-            <Select value={role} label='Rôle' onChange={e => setRole(e.target.value)}>
+            <InputLabel id="role-select-label">Rôle</InputLabel>
+            <Select 
+              labelId="role-select-label"
+              id="role-select"
+              value={role} 
+              label='Rôle' 
+              onChange={e => setRole(e.target.value)}
+            >
               {ROLES.map(roleOption => (
                 <MenuItem key={roleOption} value={roleOption}>
                   {roleOption}
@@ -60,8 +66,10 @@ function Selector({ onGenerate, loading, initialRole = '', initialDepartment = '
 
         <Grid item xs={12} md={5}>
           <FormControl fullWidth>
-            <InputLabel>Département</InputLabel>
+            <InputLabel id="department-select-label">Département</InputLabel>
             <Select
+              labelId="department-select-label"
+              id="department-select"
               value={department}
               label='Département'
               onChange={e => setDepartment(e.target.value)}
