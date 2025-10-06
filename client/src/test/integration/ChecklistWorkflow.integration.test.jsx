@@ -321,7 +321,7 @@ describe('Checklist Workflow Integration Tests', () => {
     beforeEach(() => {
       // Reset clipboard mock for each test - use the same setup as in setup.js
       vi.clearAllMocks();
-      
+
       // Mock clipboard properly for Vitest
       Object.defineProperty(navigator, 'clipboard', {
         value: {
