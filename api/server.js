@@ -100,7 +100,9 @@ console.log('🔧 Server configuration:');
 console.log(`  - Port: ${PORT}`);
 console.log(`  - Environment: ${process.env.NODE_ENV || 'development'}`);
 console.log(`  - Process ID: ${process.pid}`);
-console.log(`  - Azure Detection: ${process.env.WEBSITE_SITE_NAME ? 'Running on Azure' : 'Local/Other'}`);
+console.log(
+  `  - Azure Detection: ${process.env.WEBSITE_SITE_NAME ? 'Running on Azure' : 'Local/Other'}`
+);
 
 // Azure-specific optimizations
 if (process.env.WEBSITE_SITE_NAME) {
@@ -134,7 +136,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 });
 
 // Handle server startup errors
-server.on('error', (err) => {
+server.on('error', err => {
   console.error('❌ Server startup error:', err);
   if (err.code === 'EADDRINUSE') {
     console.error(`📍 Port ${PORT} is already in use`);
