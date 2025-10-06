@@ -27,75 +27,101 @@ describe('Checklist Workflow Integration Tests', () => {
 
   describe('Complete Checklist Generation Workflow', () => {
     it('should generate, display, and share a checklist successfully', async () => {
-      let generatedChecklist = null;
-      let checklistMetadata = null;
+      // Create a test component that properly manages state
+      const TestWorkflowComponent = () => {
+        const [generatedChecklist, setGeneratedChecklist] = React.useState(null);
+        const [checklistMetadata, setChecklistMetadata] = React.useState(null);
+        const [loading, setLoading] = React.useState(false);
 
-      const mockOnGenerate = vi.fn((role, department) => {
-        // Simulate API call
-        mockedAxios.post.mockResolvedValueOnce({
-          data: {
-            success: true,
-            data: {
-              checklist: [
-                { étape: "Accueil et présentation de l'équipe" },
-                { étape: 'Formation aux outils internes' },
-                { étape: "Configuration de l'environnement de travail" },
-              ],
+        const handleGenerate = async (role, department) => {
+          setLoading(true);
+          try {
+            const response = await mockedAxios.post('/api/checklist/generate', {
               role,
               department,
-              slug: 'generated-123',
-            },
-          },
-        });
+            });
+            const {
+              checklist,
+              role: responseRole,
+              department: responseDepartment,
+              slug,
+            } = response.data.data;
 
-        return mockedAxios.post('/api/checklist/generate', { role, department }).then(response => {
-          generatedChecklist = response.data.data.checklist;
-          checklistMetadata = {
-            role: response.data.data.role,
-            department: response.data.data.department,
-            slug: response.data.data.slug,
-          };
-        });
-      });
+            setGeneratedChecklist(checklist);
+            setChecklistMetadata({
+              role: responseRole,
+              department: responseDepartment,
+              slug,
+            });
+          } finally {
+            setLoading(false);
+          }
+        };
 
-      const mockOnChange = vi.fn(newChecklist => {
-        generatedChecklist = newChecklist;
-      });
+        const handleChange = newChecklist => {
+          setGeneratedChecklist(newChecklist);
+        };
 
-      const mockOnShare = vi.fn(() => {
-        mockedAxios.post.mockResolvedValueOnce({
-          data: {
-            success: true,
+        const handleShare = async () => {
+          return mockedAxios.post('/api/checklist/share', {
+            checklist: generatedChecklist,
+            ...checklistMetadata,
+          });
+        };
+
+        return (
+          <div>
+            <Selector onGenerate={handleGenerate} loading={loading} />
+            {generatedChecklist && (
+              <>
+                <Checklist
+                  checklist={generatedChecklist}
+                  role={checklistMetadata?.role || ''}
+                  department={checklistMetadata?.department || ''}
+                  onChange={handleChange}
+                />
+                <Share onShare={handleShare} shareSlug={null} loading={false} />
+              </>
+            )}
+          </div>
+        );
+      };
+
+      // Mock API responses
+      mockedAxios.post.mockImplementation((url, data) => {
+        if (url === '/api/checklist/generate') {
+          return Promise.resolve({
             data: {
-              slug: 'shared-456',
-              shareUrl: 'http://localhost:3000/c/shared-456',
+              success: true,
+              data: {
+                checklist: [
+                  { étape: "Accueil et présentation de l'équipe" },
+                  { étape: 'Formation aux outils internes' },
+                  { étape: "Configuration de l'environnement de travail" },
+                ],
+                role: data.role,
+                department: data.department,
+                slug: 'generated-123',
+              },
             },
-          },
-        });
-
-        return mockedAxios.post('/api/checklist/share', {
-          checklist: generatedChecklist,
-          ...checklistMetadata,
-        });
+          });
+        }
+        if (url === '/api/checklist/share') {
+          return Promise.resolve({
+            data: {
+              success: true,
+              data: {
+                slug: 'shared-456',
+                shareUrl: 'http://localhost:3000/c/shared-456',
+              },
+            },
+          });
+        }
+        return Promise.reject(new Error('Unknown URL'));
       });
 
-      // Render the complete workflow
-      render(
-        <div>
-          <Selector onGenerate={mockOnGenerate} loading={false} />
-          {generatedChecklist && (
-            <>
-              <Checklist
-                checklist={generatedChecklist}
-                role={checklistMetadata?.role || ''}
-                department={checklistMetadata?.department || ''}
-                onChange={mockOnChange}
-              />
-              <Share onShare={mockOnShare} shareSlug={null} loading={false} />
-            </>
-          )}
-        </div>
-      );
+      // Render the test component
+      render(<TestWorkflowComponent />);
 
       // Step 1: Generate checklist
       const roleSelect = screen.getByLabelText('Rôle');
@@ -112,15 +138,12 @@ describe('Checklist Workflow Integration Tests', () => {
       const generateButton = screen.getByRole('button', { name: /générer/i });
       await user.click(generateButton);
 
-      // Wait for generation to complete
+      // Wait for generation to complete and verify API call was made
       await waitFor(() => {
-        expect(mockOnGenerate).toHaveBeenCalledWith('Développeur Junior', 'Informatique');
-      });
-
-      // Verify API call was made
-      expect(mockedAxios.post).toHaveBeenCalledWith('/api/checklist/generate', {
-        role: 'Développeur Junior',
-        department: 'Informatique',
+        expect(mockedAxios.post).toHaveBeenCalledWith('/api/checklist/generate', {
+          role: 'Développeur Junior',
+          department: 'Informatique',
+        });
       });
 
       // Step 2: Verify checklist is displayed
@@ -142,25 +165,26 @@ describe('Checklist Workflow Integration Tests', () => {
       const saveButton = screen.getByTestId('SaveIcon').closest('button');
       await user.click(saveButton);
 
-      expect(mockOnChange).toHaveBeenCalled();
+      // Verify the edit was applied
+      await waitFor(() => {
+        expect(screen.getByText('Accueil personnalisé et présentation')).toBeInTheDocument();
+      });
 
       // Step 4: Share the checklist
       const shareButton = screen.getByRole('button', { name: /générer le lien de partage/i });
       await user.click(shareButton);
 
+      // Verify share API call was made
       await waitFor(() => {
-        expect(mockOnShare).toHaveBeenCalled();
+        expect(mockedAxios.post).toHaveBeenCalledWith(
+          '/api/checklist/share',
+          expect.objectContaining({
+            checklist: expect.any(Array),
+            role: 'Développeur Junior',
+            department: 'Informatique',
+          })
+        );
       });
-
-      // Verify share API call
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        '/api/checklist/share',
-        expect.objectContaining({
-          checklist: expect.any(Array),
-          role: 'Développeur Junior',
-          department: 'Informatique',
-        })
-      );
     });
 
     it('should handle API errors gracefully during generation', async () => {
