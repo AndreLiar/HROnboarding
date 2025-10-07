@@ -118,8 +118,8 @@ beforeEach(async () => {
   // Clean database before each test
   await global.testUtils.cleanDatabase();
 
-  // Add delay to prevent rate limiting between tests
-  await new Promise(resolve => setTimeout(resolve, 250));
+  // Add longer delay to prevent rate limiting between tests
+  await new Promise(resolve => setTimeout(resolve, 500)); // Increased to 500ms
 });
 
 afterAll(async () => {
@@ -134,14 +134,21 @@ afterAll(async () => {
     console.warn('Database connection cleanup warning:', error.message);
   }
 
-  // Clear any remaining timers
+  // Clear any remaining timers and connections
   if (global.gc) {
     global.gc();
   }
 
+  // Clear all timeouts and intervals
+  const maxId = setTimeout(() => {}, 0);
+  for (let id = 0; id <= maxId; id++) {
+    clearTimeout(id);
+    clearInterval(id);
+  }
+
   // Force close any remaining handles with longer timeout
   await new Promise(resolve => {
-    const timeout = setTimeout(resolve, 500);
+    const timeout = setTimeout(resolve, 1000); // Increased to 1 second
     timeout.unref(); // Allow process to exit even if timeout is pending
   });
 });

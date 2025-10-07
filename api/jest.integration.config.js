@@ -8,8 +8,8 @@ module.exports = {
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/tests/integration/setup.js'],
 
-  // Test timeout for longer integration tests
-  testTimeout: 30000,
+  // Increased test timeout for rate limiting delays
+  testTimeout: 60000, // Increased to 60 seconds
 
   // Clear mocks between tests
   clearMocks: true,
@@ -43,8 +43,11 @@ module.exports = {
   // Verbose output for debugging
   verbose: true,
 
-  // Run tests in sequence for database operations
+  // Run tests in strict sequence to avoid rate limiting
   maxWorkers: 1,
+
+  // Ensure tests run serially
+  runInBand: true,
 
   // Coverage directory
   coverageDirectory: '<rootDir>/coverage/integration',
