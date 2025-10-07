@@ -26,13 +26,15 @@ describe('Health API Integration Tests', () => {
     });
 
     it('should have consistent response structure across multiple calls', async () => {
-      // Use rate limiting helper for sequential requests
-      const requestFunctions = [
-        () => request(app).get('/health'),
-        () => request(app).get('/health'),
-        () => request(app).get('/health'),
-      ];
-      const responses = await global.testUtils.sequentialRequests(requestFunctions, 500);
+      // Sequential requests with delays to avoid rate limiting
+      const responses = [];
+      for (let i = 0; i < 3; i++) {
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        const response = await request(app).get('/health');
+        responses.push(response);
+      }
 
       responses.forEach(response => {
         expect(response.status).toBe(200);
@@ -73,11 +75,15 @@ describe('Health API Integration Tests', () => {
     });
 
     it('should be accessible without authentication', async () => {
-      // Use rate limiting helper for sequential requests
-      const requestFunctions = Array(10)
-        .fill()
-        .map(() => () => request(app).get('/status'));
-      const responses = await global.testUtils.sequentialRequests(requestFunctions, 200);
+      // Sequential requests with delays to avoid rate limiting
+      const responses = [];
+      for (let i = 0; i < 10; i++) {
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        const response = await request(app).get('/status');
+        responses.push(response);
+      }
 
       responses.forEach(response => {
         expect(response.status).toBe(200);
@@ -103,11 +109,15 @@ describe('Health API Integration Tests', () => {
       const concurrentRequests = 50;
       const startTime = Date.now();
 
-      // Use rate limiting helper for load testing
-      const requestFunctions = Array(concurrentRequests)
-        .fill()
-        .map(() => () => request(app).get('/health'));
-      const responses = await global.testUtils.sequentialRequests(requestFunctions, 30);
+      // Sequential requests with minimal delays for load testing
+      const responses = [];
+      for (let i = 0; i < concurrentRequests; i++) {
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 30));
+        }
+        const response = await request(app).get('/health');
+        responses.push(response);
+      }
       const totalTime = Date.now() - startTime;
 
       // All requests should succeed
@@ -133,11 +143,15 @@ describe('Health API Integration Tests', () => {
       for (let i = 0; i < iterations; i++) {
         const startTime = Date.now();
 
-        // Use rate limiting helper
-        const requestFunctions = Array(requestsPerIteration)
-          .fill()
-          .map(() => () => request(app).get('/health'));
-        const iterationResponses = await global.testUtils.sequentialRequests(requestFunctions, 40);
+        // Sequential requests with delays
+        const iterationResponses = [];
+        for (let j = 0; j < requestsPerIteration; j++) {
+          if (j > 0) {
+            await new Promise(resolve => setTimeout(resolve, 40));
+          }
+          const response = await request(app).get('/health');
+          iterationResponses.push(response);
+        }
         const iterationTime = Date.now() - startTime;
 
         // All requests should succeed
@@ -160,10 +174,9 @@ describe('Health API Integration Tests', () => {
 
   describe('Response Headers', () => {
     it('should include proper security headers', async () => {
-      const response = await global.testUtils.rateLimitedRequest(
-        () => request(app).get('/health').expect(200),
-        300
-      );
+      // Add delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await request(app).get('/health').expect(200);
 
       // Check for security headers set by helmet
       expect(response.headers).toHaveProperty('x-content-type-options');
@@ -172,19 +185,17 @@ describe('Health API Integration Tests', () => {
     });
 
     it('should return JSON content type', async () => {
-      const response = await global.testUtils.rateLimitedRequest(
-        () => request(app).get('/health').expect(200),
-        300
-      );
+      // Add delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await request(app).get('/health').expect(200);
 
       expect(response.headers['content-type']).toMatch(/application\/json/);
     });
 
     it('should include connection keep-alive for Azure', async () => {
-      const response = await global.testUtils.rateLimitedRequest(
-        () => request(app).get('/health').expect(200),
-        300
-      );
+      // Add delay to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const response = await request(app).get('/health').expect(200);
 
       // If running on Azure, should have keep-alive
       if (process.env.WEBSITE_SITE_NAME) {
