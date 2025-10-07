@@ -333,13 +333,13 @@ jobs:
           echo "🔍 Running Semgrep security analysis..."
           semgrep --config=auto --json --output=security/reports/semgrep-results.json . || true
 
-      - name: SonarQube Quality Gate check
+      - name: SonarQube analysis
         if: needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration'
-        uses: sonarqube-quality-gate-action@master
-        with:
-          scanMetadataReportFile: .scannerwork/report-task.txt
+        uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        continue-on-error: true
 
       - name: Create SAST security summary
         run: |

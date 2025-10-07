@@ -1,6 +1,6 @@
 const request = require('supertest');
 const app = require('../../server');
-const DatabaseService = require('../../services/databaseService');
+// const DatabaseService = require('../../services/databaseService'); // Reserved for future database testing
 
 // Global test utilities for integration tests
 global.testUtils = {
