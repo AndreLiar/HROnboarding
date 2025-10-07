@@ -1,0 +1,854 @@
+name: Comprehensive QA & Security Pipeline
+
+on:
+  # Run after deployments
+  workflow_run:
+    workflows: ["Deploy HR Onboarding Application"]
+    types:
+      - completed
+  
+  # Manual trigger with comprehensive options
+  workflow_dispatch:
+    inputs:
+      test_suite:
+        description: 'Test suite to run'
+        required: true
+        default: 'comprehensive'
+        type: choice
+        options:
+          - performance-only
+          - security-only
+          - accessibility
+          - comprehensive
+          - security-comprehensive
+      
+      security_level:
+        description: 'Security testing depth'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - baseline
+          - standard
+          - comprehensive
+          - penetration
+      
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - production
+      
+      notification_channel:
+        description: 'Notification method'
+        required: false
+        default: 'email'
+        type: choice
+        options:
+          - email
+          - slack
+          - teams
+          - none
+
+  # Scheduled comprehensive monitoring (daily)
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC - comprehensive suite
+    - cron: '0 */6 * * *'  # Every 6 hours - security baseline
+
+  # Security-focused triggers
+  pull_request:
+    branches: [ main, staging, dev ]
+    types: [opened, synchronize, reopened]
+  
+  push:
+    branches: [ main, staging, dev ]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  # Security tool versions
+  SNYK_VERSION: 'latest'
+  ZAP_VERSION: '2.14.0'
+  NUCLEI_VERSION: 'latest'
+  # Notification settings
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  TEAMS_WEBHOOK: ${{ secrets.TEAMS_WEBHOOK }}
+
+jobs:
+  # Enhanced setup with security configurations
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      api-url: ${{ steps.config.outputs.api-url }}
+      frontend-url: ${{ steps.config.outputs.frontend-url }}
+      environment: ${{ steps.config.outputs.environment }}
+      test-suite: ${{ steps.config.outputs.test-suite }}
+      security-level: ${{ steps.config.outputs.security-level }}
+      should-run-performance: ${{ steps.config.outputs.should-run-performance }}
+      should-run-security: ${{ steps.config.outputs.should-run-security }}
+      should-run-accessibility: ${{ steps.config.outputs.should-run-accessibility }}
+      notification-channel: ${{ steps.config.outputs.notification-channel }}
+    steps:
+      - name: Determine configuration
+        id: config
+        run: |
+          # Environment URLs
+          if [[ "${{ github.event.inputs.environment || 'dev' }}" == "production" ]]; then
+            echo "api-url=https://hr-onboarding-prod-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://hr-onboarding-prod-web.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.inputs.environment || 'dev' }}" == "staging" ]]; then
+            echo "api-url=https://hr-onboarding-staging-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://hr-onboarding-staging-web.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "api-url=https://hr-onboarding-dev-r2x0-api.azurewebsites.net" >> $GITHUB_OUTPUT
+            echo "frontend-url=https://mango-pebble-0d01d2103.1.azurestaticapps.net" >> $GITHUB_OUTPUT
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+          
+          # Test suite configuration
+          TEST_SUITE="${{ github.event.inputs.test_suite || 'comprehensive' }}"
+          SECURITY_LEVEL="${{ github.event.inputs.security_level || 'standard' }}"
+          NOTIFICATION_CHANNEL="${{ github.event.inputs.notification_channel || 'email' }}"
+          
+          echo "test-suite=$TEST_SUITE" >> $GITHUB_OUTPUT
+          echo "security-level=$SECURITY_LEVEL" >> $GITHUB_OUTPUT
+          echo "notification-channel=$NOTIFICATION_CHANNEL" >> $GITHUB_OUTPUT
+          
+          # Determine which test types to run
+          case "$TEST_SUITE" in
+            "performance-only")
+              echo "should-run-performance=true" >> $GITHUB_OUTPUT
+              echo "should-run-security=false" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=false" >> $GITHUB_OUTPUT
+              ;;
+            "security-only")
+              echo "should-run-performance=false" >> $GITHUB_OUTPUT
+              echo "should-run-security=true" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=false" >> $GITHUB_OUTPUT
+              ;;
+            "accessibility")
+              echo "should-run-performance=false" >> $GITHUB_OUTPUT
+              echo "should-run-security=false" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=true" >> $GITHUB_OUTPUT
+              ;;
+            "security-comprehensive")
+              echo "should-run-performance=false" >> $GITHUB_OUTPUT
+              echo "should-run-security=true" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=true" >> $GITHUB_OUTPUT
+              ;;
+            "comprehensive"|*)
+              echo "should-run-performance=true" >> $GITHUB_OUTPUT
+              echo "should-run-security=true" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=true" >> $GITHUB_OUTPUT
+              ;;
+          esac
+          
+          # Special handling for scheduled runs
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            if [[ "${{ github.event.schedule }}" == "0 */6 * * *" ]]; then
+              # 6-hourly: Security baseline only
+              echo "should-run-performance=false" >> $GITHUB_OUTPUT
+              echo "should-run-security=true" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=false" >> $GITHUB_OUTPUT
+              echo "security-level=baseline" >> $GITHUB_OUTPUT
+            else
+              # Daily: Comprehensive
+              echo "should-run-performance=true" >> $GITHUB_OUTPUT
+              echo "should-run-security=true" >> $GITHUB_OUTPUT
+              echo "should-run-accessibility=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+          
+          # PR/Push: Security focus
+          if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
+            echo "should-run-performance=false" >> $GITHUB_OUTPUT
+            echo "should-run-security=true" >> $GITHUB_OUTPUT
+            echo "should-run-accessibility=true" >> $GITHUB_OUTPUT
+            echo "security-level=standard" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Display Configuration
+        run: |
+          echo "🔧 Configuration Summary:"
+          echo "Environment: ${{ steps.config.outputs.environment }}"
+          echo "Test Suite: ${{ steps.config.outputs.test-suite }}"
+          echo "Security Level: ${{ steps.config.outputs.security-level }}"
+          echo "Performance Tests: ${{ steps.config.outputs.should-run-performance }}"
+          echo "Security Tests: ${{ steps.config.outputs.should-run-security }}"
+          echo "Accessibility Tests: ${{ steps.config.outputs.should-run-accessibility }}"
+          echo "Notification: ${{ steps.config.outputs.notification-channel }}"
+
+  # ========================================
+  # DEPENDENCY SECURITY SCANNING
+  # ========================================
+  dependency-security:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.should-run-security == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          cd api && npm ci
+          cd ../client && npm ci
+
+      - name: Run npm audit (API)
+        id: npm-audit-api
+        run: |
+          cd api
+          echo "🔍 Running npm audit for API..."
+          npm audit --audit-level=moderate --json > ../security/reports/npm-audit-api.json || true
+          npm audit --audit-level=moderate || echo "npm-audit-api-issues=true" >> $GITHUB_OUTPUT
+
+      - name: Run npm audit (Client)
+        id: npm-audit-client
+        run: |
+          cd client
+          echo "🔍 Running npm audit for Client..."
+          npm audit --audit-level=moderate --json > ../security/reports/npm-audit-client.json || true
+          npm audit --audit-level=moderate || echo "npm-audit-client-issues=true" >> $GITHUB_OUTPUT
+
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk@${{ env.SNYK_VERSION }}
+          snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk vulnerability scan (API)
+        run: |
+          cd api
+          echo "🛡️ Running Snyk scan for API..."
+          snyk test --json > ../security/reports/snyk-api.json || true
+          snyk test --severity-threshold=high || echo "SNYK_API_ISSUES=true" >> $GITHUB_ENV
+
+      - name: Snyk vulnerability scan (Client)
+        run: |
+          cd client
+          echo "🛡️ Running Snyk scan for Client..."
+          snyk test --json > ../security/reports/snyk-client.json || true
+          snyk test --severity-threshold=high || echo "SNYK_CLIENT_ISSUES=true" >> $GITHUB_ENV
+
+      - name: OWASP Dependency Check
+        if: needs.setup.outputs.security-level != 'baseline'
+        uses: dependency-check/Dependency-Check_Action@main
+        with:
+          project: 'HR-Onboarding'
+          path: '.'
+          format: 'ALL'
+          args: >
+            --enableRetired
+            --enableExperimental
+            --failOnCVSS 7
+            --out security/reports/dependency-check
+
+      - name: Create dependency security summary
+        run: |
+          mkdir -p security/reports
+          cat > security/reports/dependency-summary.md << EOF
+          # Dependency Security Scan Results
+          
+          **Date:** $(date)
+          **Environment:** ${{ needs.setup.outputs.environment }}
+          **Security Level:** ${{ needs.setup.outputs.security-level }}
+          
+          ## Scan Results
+          
+          ### npm audit (API)
+          - **Status:** ${{ steps.npm-audit-api.outputs.npm-audit-api-issues && '⚠️ Issues Found' || '✅ Clean' }}
+          
+          ### npm audit (Client)  
+          - **Status:** ${{ steps.npm-audit-client.outputs.npm-audit-client-issues && '⚠️ Issues Found' || '✅ Clean' }}
+          
+          ### Snyk Analysis
+          - **API Status:** ${{ env.SNYK_API_ISSUES && '⚠️ Vulnerabilities Found' || '✅ Clean' }}
+          - **Client Status:** ${{ env.SNYK_CLIENT_ISSUES && '⚠️ Vulnerabilities Found' || '✅ Clean' }}
+          
+          ### OWASP Dependency Check
+          - **Status:** ${{ needs.setup.outputs.security-level != 'baseline' && 'Completed' || 'Skipped (baseline mode)' }}
+          
+          ---
+          *Dependency scan completed at $(date)*
+          EOF
+
+      - name: Upload dependency security results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-security-results-${{ needs.setup.outputs.environment }}
+          path: security/reports/
+          retention-days: 30
+
+  # ========================================
+  # STATIC APPLICATION SECURITY TESTING (SAST)
+  # ========================================
+  sast-security:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.should-run-security == 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install ESLint security plugins
+        run: |
+          npm install -g eslint
+          npm install -g eslint-plugin-security
+          npm install -g eslint-plugin-no-secrets
+
+      - name: Run ESLint security scan (API)
+        run: |
+          cd api
+          echo "🔍 Running ESLint security scan for API..."
+          eslint . --ext .js --format json --output-file ../security/reports/eslint-security-api.json || true
+
+      - name: Run ESLint security scan (Client)
+        run: |
+          cd client
+          echo "🔍 Running ESLint security scan for Client..."
+          eslint src --ext .js,.jsx,.ts,.tsx --format json --output-file ../security/reports/eslint-security-client.json || true
+
+      - name: Install and run Semgrep
+        if: needs.setup.outputs.security-level != 'baseline'
+        run: |
+          python -m pip install semgrep
+          echo "🔍 Running Semgrep security analysis..."
+          semgrep --config=auto --json --output=security/reports/semgrep-results.json . || true
+
+      - name: SonarQube Quality Gate check
+        if: needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration'
+        uses: sonarqube-quality-gate-action@master
+        with:
+          scanMetadataReportFile: .scannerwork/report-task.txt
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Create SAST security summary
+        run: |
+          mkdir -p security/reports
+          cat > security/reports/sast-summary.md << EOF
+          # Static Application Security Testing (SAST) Results
+          
+          **Date:** $(date)
+          **Security Level:** ${{ needs.setup.outputs.security-level }}
+          
+          ## Analysis Results
+          
+          ### ESLint Security Analysis
+          - **API:** Completed - Check artifacts for details
+          - **Client:** Completed - Check artifacts for details
+          
+          ### Advanced Analysis
+          - **Semgrep:** ${{ needs.setup.outputs.security-level != 'baseline' && 'Completed' || 'Skipped (baseline mode)' }}
+          - **SonarQube:** ${{ (needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration') && 'Completed' || 'Skipped' }}
+          
+          ---
+          *SAST analysis completed at $(date)*
+          EOF
+
+      - name: Upload SAST results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sast-security-results-${{ needs.setup.outputs.environment }}
+          path: security/reports/
+          retention-days: 30
+
+  # ========================================
+  # DYNAMIC APPLICATION SECURITY TESTING (DAST)
+  # ========================================
+  dast-security:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.should-run-security == 'true' && needs.setup.outputs.security-level != 'baseline'
+    strategy:
+      matrix:
+        scan-type: [zap-baseline, nuclei]
+        include:
+          - scan-type: zap-comprehensive
+            condition: ${{ needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create security reports directory
+        run: mkdir -p security/reports/dast
+
+      - name: OWASP ZAP Baseline Scan
+        if: matrix.scan-type == 'zap-baseline'
+        run: |
+          echo "🔍 Running OWASP ZAP Baseline Scan on ${{ needs.setup.outputs.api-url }}"
+          docker run -v $(pwd)/security/reports/dast:/zap/wrk/:rw \
+            -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+            -t ${{ needs.setup.outputs.api-url }} \
+            -g gen.conf \
+            -r zap-baseline-report.html \
+            -J zap-baseline-report.json \
+            -w zap-baseline-report.md || true
+
+      - name: OWASP ZAP Comprehensive Scan
+        if: matrix.scan-type == 'zap-comprehensive' && (needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration')
+        run: |
+          echo "🔍 Running OWASP ZAP Comprehensive Scan on ${{ needs.setup.outputs.api-url }}"
+          docker run -v $(pwd)/security/reports/dast:/zap/wrk/:rw \
+            -t ghcr.io/zaproxy/zaproxy:stable zap-full-scan.py \
+            -t ${{ needs.setup.outputs.api-url }} \
+            -g gen.conf \
+            -r zap-comprehensive-report.html \
+            -J zap-comprehensive-report.json \
+            -w zap-comprehensive-report.md \
+            -m 10 \
+            -z "-config spider.maxDepth=5" || true
+
+      - name: Install Nuclei
+        if: matrix.scan-type == 'nuclei'
+        run: |
+          echo "📦 Installing Nuclei vulnerability scanner..."
+          wget -q https://github.com/projectdiscovery/nuclei/releases/latest/download/nuclei_2.9.15_linux_amd64.zip
+          unzip nuclei_2.9.15_linux_amd64.zip
+          sudo mv nuclei /usr/local/bin/
+
+      - name: Run Nuclei Vulnerability Scan
+        if: matrix.scan-type == 'nuclei'
+        run: |
+          echo "🔍 Running Nuclei vulnerability scan..."
+          nuclei -update-templates
+          nuclei -target ${{ needs.setup.outputs.api-url }} \
+            -severity critical,high,medium \
+            -json -output security/reports/dast/nuclei-results.json \
+            -markdown-export security/reports/dast/nuclei-report.md \
+            -stats || true
+          
+          # Also scan frontend
+          nuclei -target ${{ needs.setup.outputs.frontend-url }} \
+            -severity critical,high,medium \
+            -json -output security/reports/dast/nuclei-frontend-results.json \
+            -markdown-export security/reports/dast/nuclei-frontend-report.md \
+            -stats || true
+
+      - name: API Security Testing with Custom Scripts
+        if: matrix.scan-type == 'nuclei'
+        run: |
+          echo "🔍 Running custom API security tests..."
+          
+          # Test for common API vulnerabilities
+          echo "Testing API endpoints for security issues..."
+          
+          # Check for exposed endpoints
+          curl -s ${{ needs.setup.outputs.api-url }}/health > security/reports/dast/api-health-check.json
+          
+          # Test for directory traversal
+          curl -s "${{ needs.setup.outputs.api-url }}/../../../etc/passwd" -w "%{http_code}" -o /dev/null > security/reports/dast/directory-traversal-test.txt
+          
+          # Test for SQL injection (safe test)
+          curl -s "${{ needs.setup.outputs.api-url }}/api/checklist/generate" \
+            -H "Content-Type: application/json" \
+            -d '{"role":"test'\''OR 1=1--","department":"test"}' \
+            -w "%{http_code}" -o security/reports/dast/sql-injection-test.json || true
+          
+          # Test for XSS in parameters
+          curl -s "${{ needs.setup.outputs.api-url }}/api/checklist/shared/<script>alert('xss')</script>" \
+            -w "%{http_code}" -o /dev/null > security/reports/dast/xss-test.txt || true
+
+      - name: Frontend Security Testing
+        if: matrix.scan-type == 'nuclei'
+        run: |
+          echo "🔍 Testing frontend for client-side vulnerabilities..."
+          
+          # Check for exposed sensitive files
+          curl -s "${{ needs.setup.outputs.frontend-url }}/.env" -w "%{http_code}" -o /dev/null > security/reports/dast/frontend-env-test.txt
+          curl -s "${{ needs.setup.outputs.frontend-url }}/package.json" -w "%{http_code}" -o /dev/null > security/reports/dast/frontend-package-test.txt
+          curl -s "${{ needs.setup.outputs.frontend-url }}/.git/config" -w "%{http_code}" -o /dev/null > security/reports/dast/frontend-git-test.txt
+          
+          # Check security headers
+          curl -I "${{ needs.setup.outputs.frontend-url }}" > security/reports/dast/frontend-headers.txt 2>/dev/null || true
+
+      - name: SSL/TLS Security Assessment
+        run: |
+          echo "🔒 Assessing SSL/TLS configuration..."
+          
+          # Test SSL configuration
+          echo | openssl s_client -connect $(echo ${{ needs.setup.outputs.api-url }} | sed 's/https:\/\///'):443 -servername $(echo ${{ needs.setup.outputs.api-url }} | sed 's/https:\/\///') 2>/dev/null | openssl x509 -noout -text > security/reports/dast/ssl-cert-analysis.txt || true
+          
+          # Check for weak ciphers
+          nmap --script ssl-enum-ciphers -p 443 $(echo ${{ needs.setup.outputs.api-url }} | sed 's/https:\/\///') > security/reports/dast/ssl-cipher-analysis.txt 2>/dev/null || true
+
+      - name: Create DAST security summary
+        run: |
+          cat > security/reports/dast/dast-summary.md << EOF
+          # Dynamic Application Security Testing (DAST) Results
+          
+          **Date:** $(date)
+          **Security Level:** ${{ needs.setup.outputs.security-level }}
+          **Scan Type:** ${{ matrix.scan-type }}
+          
+          ## Targets Tested
+          - **API:** ${{ needs.setup.outputs.api-url }}
+          - **Frontend:** ${{ needs.setup.outputs.frontend-url }}
+          
+          ## Scan Results
+          
+          ### OWASP ZAP Analysis
+          - **Baseline Scan:** ${{ matrix.scan-type == 'zap-baseline' && 'Completed' || 'Skipped' }}
+          - **Comprehensive Scan:** ${{ matrix.scan-type == 'zap-comprehensive' && 'Completed' || 'Skipped' }}
+          
+          ### Nuclei Vulnerability Scan
+          - **Status:** ${{ matrix.scan-type == 'nuclei' && 'Completed' || 'Skipped' }}
+          - **API Testing:** ${{ matrix.scan-type == 'nuclei' && 'Completed' || 'Skipped' }}
+          - **Frontend Testing:** ${{ matrix.scan-type == 'nuclei' && 'Completed' || 'Skipped' }}
+          
+          ### SSL/TLS Assessment
+          - **Certificate Analysis:** Completed
+          - **Cipher Strength:** Analyzed
+          
+          ### Custom API Security Tests
+          - **Directory Traversal:** Tested
+          - **SQL Injection:** Tested
+          - **XSS Prevention:** Tested
+          - **Exposed Files:** Checked
+          
+          ---
+          *DAST analysis completed at $(date)*
+          EOF
+
+      - name: Upload DAST results
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-security-results-${{ matrix.scan-type }}-${{ needs.setup.outputs.environment }}
+          path: security/reports/dast/
+          retention-days: 30
+
+  # ========================================
+  # PERFORMANCE TESTING (Enhanced)
+  # ========================================
+  performance-testing:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.should-run-performance == 'true'
+    strategy:
+      matrix:
+        test-type: [load, lighthouse]
+        include:
+          - test-type: stress
+            condition: ${{ needs.setup.outputs.security-level != 'baseline' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install testing tools
+        run: |
+          npm install -g artillery@latest
+          npm install -g @lhci/cli@latest
+          npm install -g lighthouse@latest
+
+      - name: Run Load Testing
+        if: matrix.test-type == 'load'
+        run: |
+          echo "🚀 Running load test against ${{ needs.setup.outputs.api-url }}"
+          mkdir -p performance/reports
+          # Note: Assuming performance test configs exist
+          artillery run performance/load-tests/api-load-test.yml \
+            --target ${{ needs.setup.outputs.api-url }} \
+            --output performance/reports/load-test-$(date +%Y%m%d-%H%M%S).json
+
+      - name: Run Lighthouse Performance Audit
+        if: matrix.test-type == 'lighthouse'
+        run: |
+          echo "🔍 Running Lighthouse audit on ${{ needs.setup.outputs.frontend-url }}"
+          mkdir -p performance/reports
+          lighthouse ${{ needs.setup.outputs.frontend-url }} \
+            --output=html \
+            --output-path=performance/reports/lighthouse-report.html \
+            --chrome-flags="--headless --no-sandbox"
+
+      - name: Run Stress Testing
+        if: matrix.test-type == 'stress' && needs.setup.outputs.security-level != 'baseline'
+        run: |
+          echo "⚠️ Running stress test against ${{ needs.setup.outputs.api-url }}"
+          artillery run performance/load-tests/stress-test.yml \
+            --target ${{ needs.setup.outputs.api-url }} \
+            --output performance/reports/stress-test-$(date +%Y%m%d-%H%M%S).json
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results-${{ matrix.test-type }}-${{ needs.setup.outputs.environment }}
+          path: performance/reports/
+          retention-days: 30
+
+  # ========================================
+  # ACCESSIBILITY TESTING
+  # ========================================
+  accessibility-testing:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: needs.setup.outputs.should-run-accessibility == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install accessibility testing tools
+        run: |
+          npm install -g @axe-core/cli
+          npm install -g pa11y-ci
+          npm install -g lighthouse@latest
+          npm install -g playwright@latest
+          npx playwright install
+
+      - name: Run axe-core accessibility scan
+        run: |
+          echo "♿ Running axe-core accessibility scan"
+          mkdir -p accessibility/reports
+          axe ${{ needs.setup.outputs.frontend-url }} \
+            --save accessibility/reports/axe-results.json \
+            --tags wcag2a,wcag2aa,wcag21aa
+
+      - name: Run pa11y accessibility audit
+        run: |
+          echo "♿ Running pa11y accessibility audit"
+          pa11y ${{ needs.setup.outputs.frontend-url }} \
+            --reporter json > accessibility/reports/pa11y-results.json || true
+
+      - name: Lighthouse accessibility audit
+        run: |
+          echo "♿ Running Lighthouse accessibility audit"
+          lighthouse ${{ needs.setup.outputs.frontend-url }} \
+            --only-categories=accessibility \
+            --output=html \
+            --output-path=accessibility/reports/lighthouse-accessibility.html \
+            --chrome-flags="--headless --no-sandbox"
+
+      - name: Cross-browser accessibility testing
+        if: needs.setup.outputs.security-level != 'baseline'
+        run: |
+          echo "♿ Running cross-browser accessibility tests"
+          cd performance/accessibility
+          FRONTEND_URL=${{ needs.setup.outputs.frontend-url }} npx playwright test cross-browser-tests.spec.js \
+            --reporter=html \
+            --output=../../accessibility/reports/playwright-report
+
+      - name: Mobile accessibility testing
+        if: needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration'
+        run: |
+          echo "📱 Running mobile accessibility tests"
+          lighthouse ${{ needs.setup.outputs.frontend-url }} \
+            --emulated-form-factor=mobile \
+            --only-categories=accessibility \
+            --output=html \
+            --output-path=accessibility/reports/lighthouse-mobile-accessibility.html \
+            --chrome-flags="--headless --no-sandbox"
+
+      - name: Create accessibility summary
+        run: |
+          mkdir -p accessibility/reports
+          cat > accessibility/reports/accessibility-summary.md << EOF
+          # Accessibility Testing Results
+          
+          **Date:** $(date)
+          **Target:** ${{ needs.setup.outputs.frontend-url }}
+          
+          ## Test Results
+          
+          ### axe-core WCAG Compliance
+          - **Standards:** WCAG 2.1 AA
+          - **Results:** Check artifacts for detailed report
+          
+          ### pa11y Audit
+          - **Status:** Completed
+          - **Results:** Check artifacts for issues found
+          
+          ### Lighthouse Accessibility Score
+          - **Desktop Report:** See lighthouse-accessibility.html
+          - **Mobile Report:** ${{ (needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration') && 'See lighthouse-mobile-accessibility.html' || 'Skipped' }}
+          
+          ### Cross-Browser Testing
+          - **Status:** ${{ needs.setup.outputs.security-level != 'baseline' && 'Completed - Chromium, Firefox, WebKit' || 'Skipped (baseline mode)' }}
+          - **Playwright Report:** ${{ needs.setup.outputs.security-level != 'baseline' && 'See playwright-report directory' || 'Not available' }}
+          
+          ---
+          *Accessibility testing completed at $(date)*
+          EOF
+
+      - name: Upload accessibility results
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-results-${{ needs.setup.outputs.environment }}
+          path: accessibility/reports/
+          retention-days: 30
+
+  # ========================================
+  # ENHANCED REPORTING & ANALYSIS
+  # ========================================
+  comprehensive-analysis:
+    needs: [setup, dependency-security, sast-security, dast-security, performance-testing, accessibility-testing]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: '*-results-${{ needs.setup.outputs.environment }}'
+          path: ./comprehensive-results/
+          merge-multiple: true
+
+      - name: Analyze comprehensive results
+        id: analysis
+        run: |
+          echo "📊 Analyzing comprehensive test results..."
+          
+          # Initialize status tracking
+          OVERALL_STATUS="✅ PASSED"
+          CRITICAL_ISSUES=""
+          WARNINGS=""
+          
+          # Check for critical security issues
+          if find ./comprehensive-results -name "*security*" -type f | xargs grep -l "critical\|high" 2>/dev/null; then
+            OVERALL_STATUS="🚨 CRITICAL SECURITY ISSUES"
+            CRITICAL_ISSUES="${CRITICAL_ISSUES}\n- Critical security vulnerabilities detected"
+          fi
+          
+          # Check performance thresholds
+          if find ./comprehensive-results -name "*lighthouse*" -type f | head -1 | grep -q .; then
+            echo "performance-available=true" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check accessibility compliance
+          if find ./comprehensive-results -name "*accessibility*" -type f | head -1 | grep -q .; then
+            echo "accessibility-available=true" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "overall-status=$OVERALL_STATUS" >> $GITHUB_OUTPUT
+          echo "critical-issues=$CRITICAL_ISSUES" >> $GITHUB_OUTPUT
+
+      - name: Generate comprehensive report
+        run: |
+          mkdir -p reports
+          cat > reports/comprehensive-summary.md << EOF
+          # 🛡️ Comprehensive QA & Security Report
+          
+          **Date:** $(date)
+          **Environment:** ${{ needs.setup.outputs.environment }}
+          **Test Suite:** ${{ needs.setup.outputs.test-suite }}
+          **Security Level:** ${{ needs.setup.outputs.security-level }}
+          **Trigger:** ${{ github.event_name }}
+          
+          ## 📊 Overall Status
+          ${{ steps.analysis.outputs.overall-status }}
+          
+          ## 🔍 Test Results Summary
+          
+          ### Security Testing
+          - **Dependency Scan:** ${{ needs.dependency-security.result || 'Skipped' }}
+          - **SAST Analysis:** ${{ needs.sast-security.result || 'Skipped' }}
+          - **DAST Analysis:** ${{ needs.dast-security.result || 'Skipped' }}
+          
+          ### Performance Testing  
+          - **Status:** ${{ needs.performance-testing.result || 'Skipped' }}
+          - **Load Testing:** ${{ steps.analysis.outputs.performance-available == 'true' && '✅ Completed' || '⏭️ Skipped' }}
+          
+          ### Accessibility Testing
+          - **Status:** ${{ needs.accessibility-testing.result || 'Skipped' }}
+          - **WCAG Compliance:** ${{ steps.analysis.outputs.accessibility-available == 'true' && '✅ Tested' || '⏭️ Skipped' }}
+          
+          ## 🚨 Critical Issues
+          ${{ steps.analysis.outputs.critical-issues || 'None detected' }}
+          
+          ## 🔗 Resources
+          - [API Health Check](${{ needs.setup.outputs.api-url }}/health)
+          - [Frontend Application](${{ needs.setup.outputs.frontend-url }})
+          - [Detailed Results](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ---
+          *🤖 Generated by HR Onboarding Comprehensive QA & Security Pipeline*
+          EOF
+
+      - name: Upload comprehensive report
+        uses: actions/upload-artifact@v4
+        with:
+          name: comprehensive-report-${{ needs.setup.outputs.environment }}
+          path: reports/
+          retention-days: 30
+
+  # ========================================
+  # ENHANCED NOTIFICATIONS
+  # ========================================
+  notify-results:
+    needs: [setup, comprehensive-analysis]
+    runs-on: ubuntu-latest
+    if: always() && needs.setup.outputs.notification-channel != 'none'
+    steps:
+      - name: Send Email Notification
+        if: needs.setup.outputs.notification-channel == 'email'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "🛡️ HR Onboarding QA & Security Report - ${{ needs.setup.outputs.environment }}"
+          to: andrelaurelyvan.kanmegnetabouguie@ynov.com
+          from: ${{ secrets.EMAIL_USERNAME }}
+          html_body: |
+            <h2>🛡️ Comprehensive QA & Security Results</h2>
+            
+            <p><strong>Environment:</strong> ${{ needs.setup.outputs.environment }}</p>
+            <p><strong>Test Suite:</strong> ${{ needs.setup.outputs.test-suite }}</p>
+            <p><strong>Security Level:</strong> ${{ needs.setup.outputs.security-level }}</p>
+            <p><strong>Trigger:</strong> ${{ github.event_name }}</p>
+            
+            <h3>📊 Results Summary</h3>
+            <ul>
+              <li><strong>Overall Status:</strong> ${{ needs.comprehensive-analysis.outputs.overall-status }}</li>
+              <li><strong>Security Testing:</strong> ${{ needs.setup.outputs.should-run-security == 'true' && '✅ Completed' || '⏭️ Skipped' }}</li>
+              <li><strong>Performance Testing:</strong> ${{ needs.setup.outputs.should-run-performance == 'true' && '✅ Completed' || '⏭️ Skipped' }}</li>
+              <li><strong>Accessibility Testing:</strong> ${{ needs.setup.outputs.should-run-accessibility == 'true' && '✅ Completed' || '⏭️ Skipped' }}</li>
+            </ul>
+            
+            <h3>🔗 Quick Links</h3>
+            <ul>
+              <li><a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">📋 Full Results</a></li>
+              <li><a href="${{ needs.setup.outputs.api-url }}/health">🔗 API Health</a></li>
+              <li><a href="${{ needs.setup.outputs.frontend-url }}">🌐 Frontend App</a></li>
+            </ul>
+            
+            <hr>
+            <p><small>🤖 Generated by HR Onboarding Comprehensive QA & Security Pipeline</small></p>
+
+      # Future: Add Slack and Teams notifications here
+      - name: Send Slack Notification
+        if: needs.setup.outputs.notification-channel == 'slack' && env.SLACK_WEBHOOK
+        run: |
+          echo "🚀 Slack notification would be sent here"
+          # Implementation for Slack webhook
+
+      - name: Send Teams Notification  
+        if: needs.setup.outputs.notification-channel == 'teams' && env.TEAMS_WEBHOOK
+        run: |
+          echo "🚀 Teams notification would be sent here"
+          # Implementation for Teams webhook

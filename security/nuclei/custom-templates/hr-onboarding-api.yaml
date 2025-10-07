@@ -1,0 +1,146 @@
+id: hr-onboarding-api-security
+
+info:
+  name: HR Onboarding API Security Tests
+  author: HR Onboarding Security Team
+  severity: medium
+  description: Custom security tests for HR Onboarding API endpoints
+  tags: api,hr-onboarding,custom
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/checklist/generate"
+      - "{{BaseURL}}/api/checklist/share"
+      - "{{BaseURL}}/api/checklist/shared/test"
+      - "{{BaseURL}}/health"
+      - "{{BaseURL}}/api-docs"
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          - 400
+          - 404
+          - 500
+
+      - type: word
+        words:
+          - "error"
+          - "exception"
+          - "stack trace"
+          - "debug"
+        part: body
+        condition: or
+
+    extractors:
+      - type: regex
+        name: api_version
+        regex:
+          - '"version":"([^"]+)"'
+        part: body
+
+      - type: regex
+        name: error_messages
+        regex:
+          - '"error":"([^"]+)"'
+        part: body
+
+---
+
+id: hr-onboarding-sensitive-files
+
+info:
+  name: HR Onboarding Sensitive File Exposure
+  author: HR Onboarding Security Team  
+  severity: high
+  description: Check for exposed sensitive files in HR Onboarding application
+  tags: files,exposure,hr-onboarding
+
+requests:
+  - method: GET
+    path:
+      - "{{BaseURL}}/.env"
+      - "{{BaseURL}}/.env.local"
+      - "{{BaseURL}}/.env.production"
+      - "{{BaseURL}}/package.json"
+      - "{{BaseURL}}/package-lock.json"
+      - "{{BaseURL}}/.git/config"
+      - "{{BaseURL}}/.gitignore"
+      - "{{BaseURL}}/server.js"
+      - "{{BaseURL}}/config/database.js"
+      - "{{BaseURL}}/terraform.tfstate"
+      - "{{BaseURL}}/terraform.tfvars"
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "database"
+          - "password"
+          - "secret"
+          - "key"
+          - "token"
+          - "api_key"
+        part: body
+        condition: or
+
+---
+
+id: hr-onboarding-injection-tests
+
+info:
+  name: HR Onboarding Injection Vulnerability Tests
+  author: HR Onboarding Security Team
+  severity: high
+  description: Test for injection vulnerabilities in HR Onboarding API
+  tags: injection,sqli,xss,hr-onboarding
+
+requests:
+  - method: POST
+    path:
+      - "{{BaseURL}}/api/checklist/generate"
+    
+    headers:
+      Content-Type: application/json
+    
+    body: |
+      {
+        "role": "{{payload}}",
+        "department": "test"
+      }
+
+    payloads:
+      payload:
+        - "test' OR 1=1--"
+        - "test'; DROP TABLE users--"
+        - "<script>alert('xss')</script>"
+        - "{{7*7}}"
+        - "${7*7}"
+        - "<%=7*7%>"
+
+    matchers-condition: or
+    matchers:
+      - type: word
+        words:
+          - "syntax error"
+          - "mysql error"
+          - "postgresql error"
+          - "ORA-"
+          - "Microsoft JET Database"
+        part: body
+
+      - type: word
+        words:
+          - "<script>"
+          - "alert("
+          - "49"  # 7*7 result
+        part: body
+
+      - type: status
+        status:
+          - 500

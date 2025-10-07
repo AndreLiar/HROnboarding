@@ -147,8 +147,23 @@ jobs:
         run: npm run test:ci
         working-directory: ./api
 
-      - name: Run Client tests
+      - name: Run API integration tests
+        run: npm run test:integration:ci
+        working-directory: ./api
+        env:
+          NODE_ENV: test
+          DATABASE_SERVER: ${{ secrets.DATABASE_SERVER }}
+          DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      - name: Run Client unit tests
         run: npm run test:ci
+        working-directory: ./client
+
+      - name: Run Client integration tests
+        run: npm run test:integration:ci
         working-directory: ./client
 
       - name: Build Client

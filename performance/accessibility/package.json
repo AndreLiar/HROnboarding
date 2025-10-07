@@ -1,0 +1,33 @@
+{
+  "name": "hr-onboarding-accessibility-tests",
+  "version": "1.0.0",
+  "description": "Cross-browser accessibility and security tests for HR Onboarding application",
+  "main": "cross-browser-tests.spec.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox", 
+    "test:webkit": "playwright test --project=webkit",
+    "test:accessibility": "playwright test --grep='Accessibility'",
+    "test:security": "playwright test --grep='Security'",
+    "test:performance": "playwright test --grep='Performance'",
+    "install:browsers": "npx playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "axe-core": "^4.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "accessibility",
+    "security", 
+    "cross-browser",
+    "testing",
+    "playwright",
+    "axe-core"
+  ],
+  "author": "HR Onboarding Security Team",
+  "license": "MIT"
+}
