@@ -19,7 +19,7 @@ router.use('/templates', templateRoutes);
 router.use('/template-approval', templateApprovalRoutes);
 router.use('/template-ai', templateAIRoutes);
 router.use('/', statusRoutes);
-router.use('/', checklistRoutes);
+router.use('/checklist', checklistRoutes);
 router.use('/', healthRoutes);
 
 module.exports = router;

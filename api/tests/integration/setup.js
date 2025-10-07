@@ -123,15 +123,26 @@ beforeEach(async () => {
 });
 
 afterAll(async () => {
+  // Stop any pending database initialization timeouts
+  const maxId = setTimeout(() => {}, 0);
+  for (let id = 0; id <= maxId; id++) {
+    clearTimeout(id);
+    clearInterval(id);
+  }
+
   // Final cleanup
-  await global.testUtils.cleanDatabase();
+  try {
+    await global.testUtils.cleanDatabase();
+  } catch (error) {
+    // Ignore database cleanup errors in tests
+  }
 
   // Close database connections
   try {
     const sql = require('mssql');
     await sql.close();
   } catch (error) {
-    console.warn('Database connection cleanup warning:', error.message);
+    // Ignore database connection errors in tests
   }
 
   // Clear any remaining timers and connections
@@ -139,16 +150,9 @@ afterAll(async () => {
     global.gc();
   }
 
-  // Clear all timeouts and intervals
-  const maxId = setTimeout(() => {}, 0);
-  for (let id = 0; id <= maxId; id++) {
-    clearTimeout(id);
-    clearInterval(id);
-  }
-
-  // Force close any remaining handles with longer timeout
+  // Minimal cleanup timeout
   await new Promise(resolve => {
-    const timeout = setTimeout(resolve, 1000); // Increased to 1 second
+    const timeout = setTimeout(resolve, 100);
     timeout.unref(); // Allow process to exit even if timeout is pending
   });
 });

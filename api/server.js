@@ -91,8 +91,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Mount all routes
-app.use('/', routes);
+// Mount all routes at /api
+app.use('/api', routes);
 
 // Add startup logging for Azure diagnostics
 console.log('🚀 Starting HR Onboarding API server...');
@@ -114,35 +114,46 @@ if (process.env.WEBSITE_SITE_NAME) {
   });
 }
 
-// Start server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 HR Onboarding API running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
-  console.log(`✅ Server started successfully and accepting connections`);
+// Start server only if not in test mode
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 HR Onboarding API running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log(`📚 API Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`✅ Server started successfully and accepting connections`);
 
-  // Initialize database in background (non-blocking) with longer delay for Azure startup
-  setTimeout(() => {
-    console.log('🔄 Starting database initialization...');
-    DatabaseService.initializeDatabase()
-      .then(() => {
-        console.log('✅ Database initialized successfully');
-      })
-      .catch(err => {
-        console.error('❌ Database initialization failed:', err.message);
-        console.log('🔄 App continues without database functionality');
-      });
-  }, 5000); // Increased delay for Azure startup
-});
+    // Initialize database in background (non-blocking) with longer delay for Azure startup
+    setTimeout(() => {
+      console.log('🔄 Starting database initialization...');
+      DatabaseService.initializeDatabase()
+        .then(() => {
+          console.log('✅ Database initialized successfully');
+        })
+        .catch(err => {
+          console.error('❌ Database initialization failed:', err.message);
+          console.log('🔄 App continues without database functionality');
+        });
+    }, 5000); // Increased delay for Azure startup
+  });
+} else {
+  // In test mode, create a mock server object
+  server = {
+    close: () => {},
+    on: () => {},
+  };
+}
 
-// Handle server startup errors
-server.on('error', err => {
-  console.error('❌ Server startup error:', err);
-  if (err.code === 'EADDRINUSE') {
-    console.error(`📍 Port ${PORT} is already in use`);
-  }
-  throw new Error(`Server failed to start: ${err.message}`);
-});
+// Handle server startup errors (only in non-test mode)
+if (process.env.NODE_ENV !== 'test' && server && server.on) {
+  server.on('error', err => {
+    console.error('❌ Server startup error:', err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`📍 Port ${PORT} is already in use`);
+    }
+    throw new Error(`Server failed to start: ${err.message}`);
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
