@@ -6,10 +6,10 @@ jest.mock('openai', () => ({
   default: jest.fn().mockImplementation(() => ({
     chat: {
       completions: {
-        create: jest.fn()
-      }
-    }
-  }))
+        create: jest.fn(),
+      },
+    },
+  })),
 }));
 
 const app = require('../../../server');
@@ -20,29 +20,29 @@ describe('End-to-End Workflow Tests', () => {
       // Mock OpenAI response
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
+
       const originalChecklist = [
-        { étape: 'Accueil et présentation de l\'équipe' },
+        { étape: "Accueil et présentation de l'équipe" },
         { étape: 'Formation aux outils internes' },
-        { étape: 'Configuration de l\'environnement de travail' },
+        { étape: "Configuration de l'environnement de travail" },
         { étape: 'Lecture de la documentation projet' },
-        { étape: 'Premier code review' }
+        { étape: 'Premier code review' },
       ];
 
       mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [
           {
             message: {
-              content: JSON.stringify(originalChecklist)
-            }
-          }
+              content: JSON.stringify(originalChecklist),
+            },
+          },
         ],
-        usage: { total_tokens: 150 }
+        usage: { total_tokens: 150 },
       });
 
       const testData = {
         role: 'Senior Full Stack Developer',
-        department: 'Équipe Produit'
+        department: 'Équipe Produit',
       };
 
       // Step 1: Generate initial checklist
@@ -56,7 +56,7 @@ describe('End-to-End Workflow Tests', () => {
       expect(generateResponse.body.data.checklist).toHaveLength(5);
       expect(generateResponse.body.data.role).toBe(testData.role);
       expect(generateResponse.body.data.department).toBe(testData.department);
-      
+
       console.log('✅ Step 1 completed: Checklist generated');
 
       // Step 2: Modify the checklist (simulate user editing)
@@ -64,12 +64,12 @@ describe('End-to-End Workflow Tests', () => {
       const modifiedChecklist = [
         ...generateResponse.body.data.checklist,
         { étape: 'Entretien avec le manager' },
-        { étape: 'Planification des objectifs trimestriels' }
+        { étape: 'Planification des objectifs trimestriels' },
       ];
 
       const modifiedData = {
         ...generateResponse.body.data,
-        checklist: modifiedChecklist
+        checklist: modifiedChecklist,
       };
 
       console.log('✅ Step 2 completed: Checklist modified (added 2 items)');
@@ -102,7 +102,9 @@ describe('End-to-End Workflow Tests', () => {
 
       // Verify data integrity throughout the workflow
       expect(retrieveResponse.body.data.checklist[5].étape).toBe('Entretien avec le manager');
-      expect(retrieveResponse.body.data.checklist[6].étape).toBe('Planification des objectifs trimestriels');
+      expect(retrieveResponse.body.data.checklist[6].étape).toBe(
+        'Planification des objectifs trimestriels'
+      );
 
       console.log('✅ Step 4 completed: Shared checklist retrieved successfully');
       console.log('🎉 End-to-end workflow completed successfully!');
@@ -126,66 +128,69 @@ describe('End-to-End Workflow Tests', () => {
       // Mock OpenAI for concurrent requests
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
-      mockOpenAI.chat.completions.create.mockImplementation(() => 
+
+      mockOpenAI.chat.completions.create.mockImplementation(() =>
         Promise.resolve({
           choices: [
             {
               message: {
                 content: JSON.stringify([
                   { étape: `Étape unique ${Date.now()}` },
-                  { étape: `Étape spécifique ${Math.random()}` }
-                ])
-              }
-            }
+                  { étape: `Étape spécifique ${Math.random()}` },
+                ]),
+              },
+            },
           ],
-          usage: { total_tokens: 100 }
+          usage: { total_tokens: 100 },
         })
       );
 
       // Create multiple concurrent workflows
-      const workflows = Array(3).fill().map(async (_, index) => {
-        const testData = {
-          role: `Developer ${index}`,
-          department: `Department ${index}`
-        };
+      const workflows = Array(3)
+        .fill()
+        .map(async (_, index) => {
+          const testData = {
+            role: `Developer ${index}`,
+            department: `Department ${index}`,
+          };
 
-        console.log(`🔄 Starting workflow ${index + 1}...`);
+          console.log(`🔄 Starting workflow ${index + 1}...`);
 
-        // Generate
-        const generateResponse = await request(app)
-          .post('/api/checklist/generate')
-          .send(testData);
+          // Generate
+          const generateResponse = await request(app)
+            .post('/api/checklist/generate')
+            .send(testData);
 
-        expect(generateResponse.status).toBe(200);
+          expect(generateResponse.status).toBe(200);
 
-        // Share
-        const shareResponse = await request(app)
-          .post('/api/checklist/share')
-          .send(generateResponse.body.data);
+          // Share
+          const shareResponse = await request(app)
+            .post('/api/checklist/share')
+            .send(generateResponse.body.data);
 
-        expect(shareResponse.status).toBe(200);
+          expect(shareResponse.status).toBe(200);
 
-        // Retrieve
-        const retrieveResponse = await request(app)
-          .get(`/api/checklist/shared/${shareResponse.body.data.slug}`);
+          // Retrieve
+          const retrieveResponse = await request(app).get(
+            `/api/checklist/shared/${shareResponse.body.data.slug}`
+          );
 
-        expect(retrieveResponse.status).toBe(200);
+          expect(retrieveResponse.status).toBe(200);
 
-        console.log(`✅ Workflow ${index + 1} completed`);
+          console.log(`✅ Workflow ${index + 1} completed`);
 
-        return {
-          index,
-          slug: shareResponse.body.data.slug,
-          data: retrieveResponse.body.data
-        };
-      });
+          return {
+            index,
+            slug: shareResponse.body.data.slug,
+            data: retrieveResponse.body.data,
+          };
+        });
 
       const results = await Promise.all(workflows);
 
       // Verify all workflows completed successfully and independently
       expect(results).toHaveLength(3);
-      
+
       // All slugs should be unique
       const slugs = results.map(r => r.slug);
       const uniqueSlugs = new Set(slugs);
@@ -215,17 +220,17 @@ describe('End-to-End Workflow Tests', () => {
               message: {
                 content: JSON.stringify([
                   { étape: 'Recovered step 1' },
-                  { étape: 'Recovered step 2' }
-                ])
-              }
-            }
+                  { étape: 'Recovered step 2' },
+                ]),
+              },
+            },
           ],
-          usage: { total_tokens: 75 }
+          usage: { total_tokens: 75 },
         });
 
       const testData = {
         role: 'Recovery Test Developer',
-        department: 'QA Department'
+        department: 'QA Department',
       };
 
       // First attempt should fail
@@ -310,12 +315,12 @@ describe('End-to-End Workflow Tests', () => {
               message: {
                 content: JSON.stringify([
                   { étape: 'Load test step 1' },
-                  { étape: 'Load test step 2' }
-                ])
-              }
-            }
+                  { étape: 'Load test step 2' },
+                ]),
+              },
+            },
           ],
-          usage: { total_tokens: 80 }
+          usage: { total_tokens: 80 },
         })
       );
 
@@ -323,32 +328,35 @@ describe('End-to-End Workflow Tests', () => {
       const startTime = Date.now();
 
       // Create 10 concurrent complete workflows
-      const loadTestPromises = Array(10).fill().map(async (_, index) => {
-        const testData = {
-          role: `Load Test Role ${index}`,
-          department: 'Load Test Department'
-        };
+      const loadTestPromises = Array(10)
+        .fill()
+        .map(async (_, index) => {
+          const testData = {
+            role: `Load Test Role ${index}`,
+            department: 'Load Test Department',
+          };
 
-        // Complete workflow: generate → share → retrieve
-        const generateResponse = await request(app)
-          .post('/api/checklist/generate')
-          .send(testData);
+          // Complete workflow: generate → share → retrieve
+          const generateResponse = await request(app)
+            .post('/api/checklist/generate')
+            .send(testData);
 
-        const shareResponse = await request(app)
-          .post('/api/checklist/share')
-          .send(generateResponse.body.data);
+          const shareResponse = await request(app)
+            .post('/api/checklist/share')
+            .send(generateResponse.body.data);
 
-        const retrieveResponse = await request(app)
-          .get(`/api/checklist/shared/${shareResponse.body.data.slug}`);
+          const retrieveResponse = await request(app).get(
+            `/api/checklist/shared/${shareResponse.body.data.slug}`
+          );
 
-        return {
-          index,
-          generateTime: generateResponse.header['x-response-time'],
-          shareTime: shareResponse.header['x-response-time'],
-          retrieveTime: retrieveResponse.header['x-response-time'],
-          success: retrieveResponse.status === 200
-        };
-      });
+          return {
+            index,
+            generateTime: generateResponse.header['x-response-time'],
+            shareTime: shareResponse.header['x-response-time'],
+            retrieveTime: retrieveResponse.header['x-response-time'],
+            success: retrieveResponse.status === 200,
+          };
+        });
 
       const results = await Promise.all(loadTestPromises);
       const totalTime = Date.now() - startTime;
@@ -358,8 +366,10 @@ describe('End-to-End Workflow Tests', () => {
       expect(successCount).toBe(10);
 
       console.log(`✅ Load test completed in ${totalTime}ms`);
-      console.log(`📊 Success rate: ${successCount}/10 (${(successCount/10*100).toFixed(1)}%)`);
-      console.log(`⚡ Average time per workflow: ${(totalTime/10).toFixed(1)}ms`);
+      console.log(
+        `📊 Success rate: ${successCount}/10 (${((successCount / 10) * 100).toFixed(1)}%)`
+      );
+      console.log(`⚡ Average time per workflow: ${(totalTime / 10).toFixed(1)}ms`);
 
       // Performance assertions
       expect(totalTime).toBeLessThan(30000); // Should complete within 30 seconds
@@ -375,51 +385,50 @@ describe('End-to-End Workflow Tests', () => {
           choices: [
             {
               message: {
-                content: JSON.stringify([
-                  { étape: 'Consistency test step' }
-                ])
-              }
-            }
+                content: JSON.stringify([{ étape: 'Consistency test step' }]),
+              },
+            },
           ],
-          usage: { total_tokens: 50 }
+          usage: { total_tokens: 50 },
         })
       );
 
       console.log('🔄 Testing data consistency under concurrent operations...');
 
       // Create multiple workflows that modify the same type of data
-      const consistencyPromises = Array(5).fill().map(async (_, index) => {
-        const testData = {
-          role: 'Consistency Test Role',
-          department: `Department ${index}`
-        };
+      const consistencyPromises = Array(5)
+        .fill()
+        .map(async (_, index) => {
+          const testData = {
+            role: 'Consistency Test Role',
+            department: `Department ${index}`,
+          };
 
-        const generateResponse = await request(app)
-          .post('/api/checklist/generate')
-          .send(testData);
+          const generateResponse = await request(app)
+            .post('/api/checklist/generate')
+            .send(testData);
 
-        // Add unique modification per workflow
-        const modifiedData = {
-          ...generateResponse.body.data,
-          checklist: [
-            ...generateResponse.body.data.checklist,
-            { étape: `Unique step for workflow ${index}` }
-          ]
-        };
+          // Add unique modification per workflow
+          const modifiedData = {
+            ...generateResponse.body.data,
+            checklist: [
+              ...generateResponse.body.data.checklist,
+              { étape: `Unique step for workflow ${index}` },
+            ],
+          };
 
-        const shareResponse = await request(app)
-          .post('/api/checklist/share')
-          .send(modifiedData);
+          const shareResponse = await request(app).post('/api/checklist/share').send(modifiedData);
 
-        const retrieveResponse = await request(app)
-          .get(`/api/checklist/shared/${shareResponse.body.data.slug}`);
+          const retrieveResponse = await request(app).get(
+            `/api/checklist/shared/${shareResponse.body.data.slug}`
+          );
 
-        return {
-          index,
-          retrievedData: retrieveResponse.body.data,
-          expectedUniqueStep: `Unique step for workflow ${index}`
-        };
-      });
+          return {
+            index,
+            retrievedData: retrieveResponse.body.data,
+            expectedUniqueStep: `Unique step for workflow ${index}`,
+          };
+        });
 
       const results = await Promise.all(consistencyPromises);
 

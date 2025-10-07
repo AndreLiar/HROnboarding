@@ -6,10 +6,10 @@ jest.mock('openai', () => ({
   default: jest.fn().mockImplementation(() => ({
     chat: {
       completions: {
-        create: jest.fn()
-      }
-    }
-  }))
+        create: jest.fn(),
+      },
+    },
+  })),
 }));
 
 const app = require('../../../server');
@@ -27,14 +27,12 @@ describe('Checklist API Integration Tests', () => {
       // Mock OpenAI response
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
-      mockOpenAI.chat.completions.create.mockResolvedValue(
-        global.testUtils.mockOpenAIResponse()
-      );
+
+      mockOpenAI.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
 
       const testData = {
         role: 'Développeur Frontend',
-        department: 'Informatique'
+        department: 'Informatique',
       };
 
       const response = await request(app)
@@ -44,12 +42,12 @@ describe('Checklist API Integration Tests', () => {
 
       // Validate response structure
       global.testUtils.validateChecklistResponse(response);
-      
+
       // Validate specific data
       expect(response.body.data.role).toBe(testData.role);
       expect(response.body.data.department).toBe(testData.department);
       expect(response.body.data.checklist.length).toBeGreaterThan(0);
-      
+
       // Validate checklist items structure
       response.body.data.checklist.forEach(item => {
         expect(item).toHaveProperty('étape');
@@ -63,7 +61,7 @@ describe('Checklist API Integration Tests', () => {
 
     it('should handle missing role field', async () => {
       const invalidData = {
-        department: 'Informatique'
+        department: 'Informatique',
         // Missing role
       };
 
@@ -77,7 +75,7 @@ describe('Checklist API Integration Tests', () => {
 
     it('should handle missing department field', async () => {
       const invalidData = {
-        role: 'Développeur Frontend'
+        role: 'Développeur Frontend',
         // Missing department
       };
 
@@ -93,14 +91,14 @@ describe('Checklist API Integration Tests', () => {
       // Mock OpenAI to throw an error
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
+
       mockOpenAI.chat.completions.create.mockRejectedValue(
         new Error('OpenAI API rate limit exceeded')
       );
 
       const testData = {
         role: 'Développeur Frontend',
-        department: 'Informatique'
+        department: 'Informatique',
       };
 
       const response = await request(app)
@@ -115,21 +113,21 @@ describe('Checklist API Integration Tests', () => {
       // Mock OpenAI to return invalid JSON
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
+
       mockOpenAI.chat.completions.create.mockResolvedValue({
         choices: [
           {
             message: {
-              content: 'Invalid JSON response from AI'
-            }
-          }
+              content: 'Invalid JSON response from AI',
+            },
+          },
         ],
-        usage: { total_tokens: 100 }
+        usage: { total_tokens: 100 },
       });
 
       const testData = {
         role: 'Développeur Frontend',
-        department: 'Informatique'
+        department: 'Informatique',
       };
 
       const response = await request(app)
@@ -148,17 +146,13 @@ describe('Checklist API Integration Tests', () => {
       // Generate a checklist first for sharing tests
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
-      mockOpenAI.chat.completions.create.mockResolvedValue(
-        global.testUtils.mockOpenAIResponse()
-      );
 
-      const response = await request(app)
-        .post('/api/checklist/generate')
-        .send({
-          role: 'Test Developer',
-          department: 'Test Department'
-        });
+      mockOpenAI.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
+
+      const response = await request(app).post('/api/checklist/generate').send({
+        role: 'Test Developer',
+        department: 'Test Department',
+      });
 
       generatedChecklist = response.body.data;
     });
@@ -177,10 +171,7 @@ describe('Checklist API Integration Tests', () => {
     });
 
     it('should handle missing checklist data', async () => {
-      const response = await request(app)
-        .post('/api/checklist/share')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/checklist/share').send({}).expect(400);
 
       global.testUtils.validateErrorResponse(response, 400, 'checklist');
     });
@@ -189,7 +180,7 @@ describe('Checklist API Integration Tests', () => {
       const invalidData = {
         checklist: 'not an array',
         role: 'Test Role',
-        department: 'Test Department'
+        department: 'Test Department',
       };
 
       const response = await request(app)
@@ -203,16 +194,16 @@ describe('Checklist API Integration Tests', () => {
     it('should handle database errors gracefully', async () => {
       // Create checklist with very long content to potentially cause DB error
       const problematicData = {
-        checklist: Array(1000).fill().map((_, i) => ({ 
-          étape: `Very long step ${i} ${'a'.repeat(1000)}` 
-        })),
+        checklist: Array(1000)
+          .fill()
+          .map((_, i) => ({
+            étape: `Very long step ${i} ${'a'.repeat(1000)}`,
+          })),
         role: 'Test Role',
-        department: 'Test Department'
+        department: 'Test Department',
       };
 
-      const response = await request(app)
-        .post('/api/checklist/share')
-        .send(problematicData);
+      const response = await request(app).post('/api/checklist/share').send(problematicData);
 
       // Should either succeed or fail gracefully
       if (response.status !== 200) {
@@ -228,18 +219,14 @@ describe('Checklist API Integration Tests', () => {
       // Create and share a checklist for retrieval tests
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
-      mockOpenAI.chat.completions.create.mockResolvedValue(
-        global.testUtils.mockOpenAIResponse()
-      );
+
+      mockOpenAI.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
 
       // Generate checklist
-      const generateResponse = await request(app)
-        .post('/api/checklist/generate')
-        .send({
-          role: 'Test Developer',
-          department: 'Test Department'
-        });
+      const generateResponse = await request(app).post('/api/checklist/generate').send({
+        role: 'Test Developer',
+        department: 'Test Department',
+      });
 
       // Share checklist
       const shareResponse = await request(app)
@@ -250,9 +237,7 @@ describe('Checklist API Integration Tests', () => {
     });
 
     it('should retrieve a shared checklist successfully', async () => {
-      const response = await request(app)
-        .get(`/api/checklist/shared/${sharedSlug}`)
-        .expect(200);
+      const response = await request(app).get(`/api/checklist/shared/${sharedSlug}`).expect(200);
 
       expect(response.body).toHaveProperty('success', true);
       expect(response.body).toHaveProperty('data');
@@ -265,9 +250,7 @@ describe('Checklist API Integration Tests', () => {
     it('should handle non-existent slug', async () => {
       const fakeSlug = 'non-existent-slug-12345';
 
-      const response = await request(app)
-        .get(`/api/checklist/shared/${fakeSlug}`)
-        .expect(404);
+      const response = await request(app).get(`/api/checklist/shared/${fakeSlug}`).expect(404);
 
       global.testUtils.validateErrorResponse(response, 404, 'not found');
     });
@@ -275,9 +258,7 @@ describe('Checklist API Integration Tests', () => {
     it('should handle invalid slug format', async () => {
       const invalidSlug = 'invalid/slug/with/slashes';
 
-      const response = await request(app)
-        .get(`/api/checklist/shared/${invalidSlug}`)
-        .expect(400);
+      const response = await request(app).get(`/api/checklist/shared/${invalidSlug}`).expect(400);
 
       global.testUtils.validateErrorResponse(response, 400);
     });
@@ -285,9 +266,7 @@ describe('Checklist API Integration Tests', () => {
     it('should handle malicious slug attempts', async () => {
       const maliciousSlug = '../../../etc/passwd';
 
-      const response = await request(app)
-        .get(`/api/checklist/shared/${maliciousSlug}`)
-        .expect(400);
+      const response = await request(app).get(`/api/checklist/shared/${maliciousSlug}`).expect(400);
 
       global.testUtils.validateErrorResponse(response, 400);
     });
@@ -298,11 +277,11 @@ describe('Checklist API Integration Tests', () => {
       // Mock OpenAI
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
+
       const customChecklist = [
         { étape: 'Accueil et présentation' },
         { étape: 'Formation aux outils' },
-        { étape: 'Configuration environnement' }
+        { étape: 'Configuration environnement' },
       ];
 
       mockOpenAI.chat.completions.create.mockResolvedValue(
@@ -311,7 +290,7 @@ describe('Checklist API Integration Tests', () => {
 
       const testData = {
         role: 'Full Stack Developer',
-        department: 'Informatique'
+        department: 'Informatique',
       };
 
       // Step 1: Generate checklist
@@ -352,20 +331,20 @@ describe('Checklist API Integration Tests', () => {
       // Mock OpenAI
       const { default: OpenAI } = require('openai');
       const mockOpenAI = new OpenAI();
-      
-      mockOpenAI.chat.completions.create.mockResolvedValue(
-        global.testUtils.mockOpenAIResponse()
-      );
+
+      mockOpenAI.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
 
       // Create multiple concurrent requests
-      const requests = Array(5).fill().map((_, i) => 
-        request(app)
-          .post('/api/checklist/generate')
-          .send({
-            role: `Concurrent Developer ${i}`,
-            department: 'Test Department'
-          })
-      );
+      const requests = Array(5)
+        .fill()
+        .map((_, i) =>
+          request(app)
+            .post('/api/checklist/generate')
+            .send({
+              role: `Concurrent Developer ${i}`,
+              department: 'Test Department',
+            })
+        );
 
       const responses = await Promise.all(requests);
 
