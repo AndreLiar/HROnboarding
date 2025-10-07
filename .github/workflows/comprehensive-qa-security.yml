@@ -1,4 +1,4 @@
-name: Comprehensive QA & Security Pipeline
+name: Comprehensive QA & Security Pipeline (Free Tools Only)
 
 on:
   # Run after deployments
@@ -71,7 +71,6 @@ env:
   NODE_VERSION: '20'
   PYTHON_VERSION: '3.11'
   # Security tool versions
-  SNYK_VERSION: 'latest'
   ZAP_VERSION: '2.14.0'
   NUCLEI_VERSION: 'latest'
   # Notification settings
@@ -223,24 +222,6 @@ jobs:
           npm audit --audit-level=moderate --json > ../security/reports/npm-audit-client.json || true
           npm audit --audit-level=moderate || echo "npm-audit-client-issues=true" >> $GITHUB_OUTPUT
 
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk@${{ env.SNYK_VERSION }}
-          snyk auth ${{ secrets.SNYK_TOKEN }}
-
-      - name: Snyk vulnerability scan (API)
-        run: |
-          cd api
-          echo "🛡️ Running Snyk scan for API..."
-          snyk test --json > ../security/reports/snyk-api.json || true
-          snyk test --severity-threshold=high || echo "SNYK_API_ISSUES=true" >> $GITHUB_ENV
-
-      - name: Snyk vulnerability scan (Client)
-        run: |
-          cd client
-          echo "🛡️ Running Snyk scan for Client..."
-          snyk test --json > ../security/reports/snyk-client.json || true
-          snyk test --severity-threshold=high || echo "SNYK_CLIENT_ISSUES=true" >> $GITHUB_ENV
 
       - name: OWASP Dependency Check
         if: needs.setup.outputs.security-level != 'baseline'
@@ -259,29 +240,28 @@ jobs:
         run: |
           mkdir -p security/reports
           cat > security/reports/dependency-summary.md << EOF
-          # Dependency Security Scan Results
+          # Dependency Security Scan Results (Free Tools)
           
           **Date:** $(date)
           **Environment:** ${{ needs.setup.outputs.environment }}
           **Security Level:** ${{ needs.setup.outputs.security-level }}
           
-          ## Scan Results
+          ## Scan Results (100% Free Tools)
           
           ### npm audit (API)
           - **Status:** ${{ steps.npm-audit-api.outputs.npm-audit-api-issues && '⚠️ Issues Found' || '✅ Clean' }}
+          - **Tool:** Built-in Node.js security auditing
           
           ### npm audit (Client)  
           - **Status:** ${{ steps.npm-audit-client.outputs.npm-audit-client-issues && '⚠️ Issues Found' || '✅ Clean' }}
-          
-          ### Snyk Analysis
-          - **API Status:** ${{ env.SNYK_API_ISSUES && '⚠️ Vulnerabilities Found' || '✅ Clean' }}
-          - **Client Status:** ${{ env.SNYK_CLIENT_ISSUES && '⚠️ Vulnerabilities Found' || '✅ Clean' }}
+          - **Tool:** Built-in Node.js security auditing
           
           ### OWASP Dependency Check
           - **Status:** ${{ needs.setup.outputs.security-level != 'baseline' && 'Completed' || 'Skipped (baseline mode)' }}
+          - **Tool:** Free OWASP vulnerability database
           
           ---
-          *Dependency scan completed at $(date)*
+          *Free dependency scan completed at $(date)*
           EOF
 
       - name: Upload dependency security results
@@ -333,35 +313,29 @@ jobs:
           echo "🔍 Running Semgrep security analysis..."
           semgrep --config=auto --json --output=security/reports/semgrep-results.json . || true
 
-      - name: SonarQube analysis
-        if: needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration'
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://sonarcloud.io
-        continue-on-error: true
 
       - name: Create SAST security summary
         run: |
           mkdir -p security/reports
           cat > security/reports/sast-summary.md << EOF
-          # Static Application Security Testing (SAST) Results
+          # Static Application Security Testing (SAST) Results (Free Tools)
           
           **Date:** $(date)
           **Security Level:** ${{ needs.setup.outputs.security-level }}
           
-          ## Analysis Results
+          ## Analysis Results (100% Free Tools)
           
           ### ESLint Security Analysis
           - **API:** Completed - Check artifacts for details
           - **Client:** Completed - Check artifacts for details
+          - **Tools:** eslint-plugin-security, eslint-plugin-no-secrets
           
           ### Advanced Analysis
           - **Semgrep:** ${{ needs.setup.outputs.security-level != 'baseline' && 'Completed' || 'Skipped (baseline mode)' }}
-          - **SonarQube:** ${{ (needs.setup.outputs.security-level == 'comprehensive' || needs.setup.outputs.security-level == 'penetration') && 'Completed' || 'Skipped' }}
+          - **Tool:** Free open-source static analysis
           
           ---
-          *SAST analysis completed at $(date)*
+          *Free SAST analysis completed at $(date)*
           EOF
 
       - name: Upload SAST results
@@ -750,16 +724,27 @@ jobs:
         run: |
           mkdir -p reports
           cat > reports/comprehensive-summary.md << EOF
-          # 🛡️ Comprehensive QA & Security Report
+          # 🛡️ Comprehensive QA & Security Report (Free Tools Only)
           
           **Date:** $(date)
           **Environment:** ${{ needs.setup.outputs.environment }}
           **Test Suite:** ${{ needs.setup.outputs.test-suite }}
           **Security Level:** ${{ needs.setup.outputs.security-level }}
           **Trigger:** ${{ github.event_name }}
+          **Cost:** $0.00 (100% Free Open Source Tools)
           
           ## 📊 Overall Status
           ${{ steps.analysis.outputs.overall-status }}
+          
+          ## 🆓 Free Security Tools Used
+          - ✅ npm audit (Built-in Node.js security)
+          - ✅ ESLint security plugins
+          - ✅ OWASP ZAP vulnerability testing
+          - ✅ Nuclei security scanning
+          - ✅ OWASP Dependency Check
+          - ✅ Semgrep static analysis
+          - ✅ Accessibility testing (axe-core, pa11y)
+          - ✅ Performance monitoring (Lighthouse)
           
           ## 🔍 Test Results Summary
           
@@ -811,11 +796,12 @@ jobs:
           server_port: 587
           username: ${{ secrets.EMAIL_USERNAME }}
           password: ${{ secrets.EMAIL_PASSWORD }}
-          subject: "🛡️ HR Onboarding QA & Security Report - ${{ needs.setup.outputs.environment }}"
+          subject: "🛡️ HR Onboarding QA & Security Report (Free Tools) - ${{ needs.setup.outputs.environment }}"
           to: andrelaurelyvan.kanmegnetabouguie@ynov.com
           from: ${{ secrets.EMAIL_USERNAME }}
           html_body: |
-            <h2>🛡️ Comprehensive QA & Security Results</h2>
+            <h2>🛡️ Comprehensive QA & Security Results (100% Free Tools)</h2>
+            <p style="color: green;"><strong>💰 Cost: $0.00 - All open source tools!</strong></p>
             
             <p><strong>Environment:</strong> ${{ needs.setup.outputs.environment }}</p>
             <p><strong>Test Suite:</strong> ${{ needs.setup.outputs.test-suite }}</p>

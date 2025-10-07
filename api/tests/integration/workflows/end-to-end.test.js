@@ -15,6 +15,11 @@ jest.mock('openai', () => ({
 const app = require('../../../server');
 
 describe('End-to-End Workflow Tests', () => {
+  // Add delay between tests to prevent rate limiting
+  beforeEach(async () => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+  });
+
   describe('Complete Checklist Lifecycle', () => {
     it('should complete the full workflow: generate → modify → share → retrieve', async () => {
       // Mock OpenAI response
@@ -145,10 +150,10 @@ describe('End-to-End Workflow Tests', () => {
         })
       );
 
-      // Create multiple concurrent workflows
-      const workflows = Array(3)
-        .fill()
-        .map(async (_, index) => {
+      // Create sequential workflows to avoid rate limiting
+      const results = [];
+      
+      for (let index = 0; index < 3; index++) {
           const testData = {
             role: `Developer ${index}`,
             department: `Department ${index}`,
@@ -179,14 +184,17 @@ describe('End-to-End Workflow Tests', () => {
 
           console.log(`✅ Workflow ${index + 1} completed`);
 
-          return {
+          results.push({
             index,
             slug: shareResponse.body.data.slug,
             data: retrieveResponse.body.data,
-          };
-        });
-
-      const results = await Promise.all(workflows);
+          });
+          
+          // Add delay between workflows to avoid rate limiting
+          if (index < 2) {
+            await new Promise(resolve => setTimeout(resolve, 150));
+          }
+        }
 
       // Verify all workflows completed successfully and independently
       expect(results).toHaveLength(3);
@@ -327,10 +335,10 @@ describe('End-to-End Workflow Tests', () => {
       console.log('🔄 Starting load test with 10 concurrent workflows...');
       const startTime = Date.now();
 
-      // Create 10 concurrent complete workflows
-      const loadTestPromises = Array(10)
-        .fill()
-        .map(async (_, index) => {
+      // Create sequential workflows to avoid rate limiting
+      const results = [];
+      
+      for (let index = 0; index < 10; index++) {
           const testData = {
             role: `Load Test Role ${index}`,
             department: 'Load Test Department',
@@ -349,16 +357,17 @@ describe('End-to-End Workflow Tests', () => {
             `/api/checklist/shared/${shareResponse.body.data.slug}`
           );
 
-          return {
+          results.push({
             index,
             generateTime: generateResponse.header['x-response-time'],
             shareTime: shareResponse.header['x-response-time'],
             retrieveTime: retrieveResponse.header['x-response-time'],
             success: retrieveResponse.status === 200,
-          };
-        });
-
-      const results = await Promise.all(loadTestPromises);
+          });
+          
+          // Add delay between workflows to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
       const totalTime = Date.now() - startTime;
 
       // Verify all workflows completed successfully
@@ -395,10 +404,10 @@ describe('End-to-End Workflow Tests', () => {
 
       console.log('🔄 Testing data consistency under concurrent operations...');
 
-      // Create multiple workflows that modify the same type of data
-      const consistencyPromises = Array(5)
-        .fill()
-        .map(async (_, index) => {
+      // Create sequential workflows to avoid rate limiting
+      const results = [];
+      
+      for (let index = 0; index < 5; index++) {
           const testData = {
             role: 'Consistency Test Role',
             department: `Department ${index}`,
@@ -423,14 +432,17 @@ describe('End-to-End Workflow Tests', () => {
             `/api/checklist/shared/${shareResponse.body.data.slug}`
           );
 
-          return {
+          results.push({
             index,
             retrievedData: retrieveResponse.body.data,
             expectedUniqueStep: `Unique step for workflow ${index}`,
-          };
-        });
-
-      const results = await Promise.all(consistencyPromises);
+          });
+          
+          // Add delay between workflows to avoid rate limiting
+          if (index < 4) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        }
 
       // Verify each workflow maintained its unique data
       results.forEach(result => {

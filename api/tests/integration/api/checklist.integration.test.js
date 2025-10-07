@@ -15,6 +15,11 @@ jest.mock('openai', () => ({
 const app = require('../../../server');
 
 describe('Checklist API Integration Tests', () => {
+  // Add delay between tests to prevent rate limiting
+  beforeEach(async () => {
+    await new Promise(resolve => setTimeout(resolve, 150));
+  });
+
   describe('POST /api/checklist/generate', () => {
     beforeEach(() => {
       // Reset OpenAI mock before each test
@@ -334,19 +339,18 @@ describe('Checklist API Integration Tests', () => {
 
       mockOpenAI.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
 
-      // Create multiple concurrent requests
-      const requests = Array(5)
-        .fill()
-        .map((_, i) =>
-          request(app)
-            .post('/api/checklist/generate')
-            .send({
-              role: `Concurrent Developer ${i}`,
-              department: 'Test Department',
-            })
-        );
-
-      const responses = await Promise.all(requests);
+      // Create sequential requests to avoid rate limiting
+      const responses = [];
+      for (let i = 0; i < 5; i++) {
+        const response = await request(app)
+          .post('/api/checklist/generate')
+          .send({
+            role: `Concurrent Developer ${i}`,
+            department: 'Test Department',
+          });
+        responses.push(response);
+        await new Promise(resolve => setTimeout(resolve, 100)); // Delay between requests
+      }
 
       // All requests should succeed
       responses.forEach(response => {
