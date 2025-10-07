@@ -105,7 +105,7 @@ describe('Health API Integration Tests', () => {
       const concurrentRequests = 50;
       const startTime = Date.now();
       const responses = [];
-      
+
       // Sequential requests with minimal delay to avoid rate limiting
       for (let i = 0; i < concurrentRequests; i++) {
         const response = await request(app).get('/health');
@@ -138,7 +138,7 @@ describe('Health API Integration Tests', () => {
         const startTime = Date.now();
 
         const responses = [];
-        
+
         // Sequential requests to avoid rate limiting
         for (let j = 0; j < requestsPerIteration; j++) {
           const response = await request(app).get('/health');

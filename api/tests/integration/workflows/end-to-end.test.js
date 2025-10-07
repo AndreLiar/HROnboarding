@@ -152,49 +152,47 @@ describe('End-to-End Workflow Tests', () => {
 
       // Create sequential workflows to avoid rate limiting
       const results = [];
-      
+
       for (let index = 0; index < 3; index++) {
-          const testData = {
-            role: `Developer ${index}`,
-            department: `Department ${index}`,
-          };
+        const testData = {
+          role: `Developer ${index}`,
+          department: `Department ${index}`,
+        };
 
-          console.log(`🔄 Starting workflow ${index + 1}...`);
+        console.log(`🔄 Starting workflow ${index + 1}...`);
 
-          // Generate
-          const generateResponse = await request(app)
-            .post('/api/checklist/generate')
-            .send(testData);
+        // Generate
+        const generateResponse = await request(app).post('/api/checklist/generate').send(testData);
 
-          expect(generateResponse.status).toBe(200);
+        expect(generateResponse.status).toBe(200);
 
-          // Share
-          const shareResponse = await request(app)
-            .post('/api/checklist/share')
-            .send(generateResponse.body.data);
+        // Share
+        const shareResponse = await request(app)
+          .post('/api/checklist/share')
+          .send(generateResponse.body.data);
 
-          expect(shareResponse.status).toBe(200);
+        expect(shareResponse.status).toBe(200);
 
-          // Retrieve
-          const retrieveResponse = await request(app).get(
-            `/api/checklist/shared/${shareResponse.body.data.slug}`
-          );
+        // Retrieve
+        const retrieveResponse = await request(app).get(
+          `/api/checklist/shared/${shareResponse.body.data.slug}`
+        );
 
-          expect(retrieveResponse.status).toBe(200);
+        expect(retrieveResponse.status).toBe(200);
 
-          console.log(`✅ Workflow ${index + 1} completed`);
+        console.log(`✅ Workflow ${index + 1} completed`);
 
-          results.push({
-            index,
-            slug: shareResponse.body.data.slug,
-            data: retrieveResponse.body.data,
-          });
-          
-          // Add delay between workflows to avoid rate limiting
-          if (index < 2) {
-            await new Promise(resolve => setTimeout(resolve, 150));
-          }
+        results.push({
+          index,
+          slug: shareResponse.body.data.slug,
+          data: retrieveResponse.body.data,
+        });
+
+        // Add delay between workflows to avoid rate limiting
+        if (index < 2) {
+          await new Promise(resolve => setTimeout(resolve, 150));
         }
+      }
 
       // Verify all workflows completed successfully and independently
       expect(results).toHaveLength(3);
@@ -337,37 +335,35 @@ describe('End-to-End Workflow Tests', () => {
 
       // Create sequential workflows to avoid rate limiting
       const results = [];
-      
+
       for (let index = 0; index < 10; index++) {
-          const testData = {
-            role: `Load Test Role ${index}`,
-            department: 'Load Test Department',
-          };
+        const testData = {
+          role: `Load Test Role ${index}`,
+          department: 'Load Test Department',
+        };
 
-          // Complete workflow: generate → share → retrieve
-          const generateResponse = await request(app)
-            .post('/api/checklist/generate')
-            .send(testData);
+        // Complete workflow: generate → share → retrieve
+        const generateResponse = await request(app).post('/api/checklist/generate').send(testData);
 
-          const shareResponse = await request(app)
-            .post('/api/checklist/share')
-            .send(generateResponse.body.data);
+        const shareResponse = await request(app)
+          .post('/api/checklist/share')
+          .send(generateResponse.body.data);
 
-          const retrieveResponse = await request(app).get(
-            `/api/checklist/shared/${shareResponse.body.data.slug}`
-          );
+        const retrieveResponse = await request(app).get(
+          `/api/checklist/shared/${shareResponse.body.data.slug}`
+        );
 
-          results.push({
-            index,
-            generateTime: generateResponse.header['x-response-time'],
-            shareTime: shareResponse.header['x-response-time'],
-            retrieveTime: retrieveResponse.header['x-response-time'],
-            success: retrieveResponse.status === 200,
-          });
-          
-          // Add delay between workflows to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
+        results.push({
+          index,
+          generateTime: generateResponse.header['x-response-time'],
+          shareTime: shareResponse.header['x-response-time'],
+          retrieveTime: retrieveResponse.header['x-response-time'],
+          success: retrieveResponse.status === 200,
+        });
+
+        // Add delay between workflows to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
       const totalTime = Date.now() - startTime;
 
       // Verify all workflows completed successfully
@@ -406,43 +402,41 @@ describe('End-to-End Workflow Tests', () => {
 
       // Create sequential workflows to avoid rate limiting
       const results = [];
-      
+
       for (let index = 0; index < 5; index++) {
-          const testData = {
-            role: 'Consistency Test Role',
-            department: `Department ${index}`,
-          };
+        const testData = {
+          role: 'Consistency Test Role',
+          department: `Department ${index}`,
+        };
 
-          const generateResponse = await request(app)
-            .post('/api/checklist/generate')
-            .send(testData);
+        const generateResponse = await request(app).post('/api/checklist/generate').send(testData);
 
-          // Add unique modification per workflow
-          const modifiedData = {
-            ...generateResponse.body.data,
-            checklist: [
-              ...generateResponse.body.data.checklist,
-              { étape: `Unique step for workflow ${index}` },
-            ],
-          };
+        // Add unique modification per workflow
+        const modifiedData = {
+          ...generateResponse.body.data,
+          checklist: [
+            ...generateResponse.body.data.checklist,
+            { étape: `Unique step for workflow ${index}` },
+          ],
+        };
 
-          const shareResponse = await request(app).post('/api/checklist/share').send(modifiedData);
+        const shareResponse = await request(app).post('/api/checklist/share').send(modifiedData);
 
-          const retrieveResponse = await request(app).get(
-            `/api/checklist/shared/${shareResponse.body.data.slug}`
-          );
+        const retrieveResponse = await request(app).get(
+          `/api/checklist/shared/${shareResponse.body.data.slug}`
+        );
 
-          results.push({
-            index,
-            retrievedData: retrieveResponse.body.data,
-            expectedUniqueStep: `Unique step for workflow ${index}`,
-          });
-          
-          // Add delay between workflows to avoid rate limiting
-          if (index < 4) {
-            await new Promise(resolve => setTimeout(resolve, 100));
-          }
+        results.push({
+          index,
+          retrievedData: retrieveResponse.body.data,
+          expectedUniqueStep: `Unique step for workflow ${index}`,
+        });
+
+        // Add delay between workflows to avoid rate limiting
+        if (index < 4) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
+      }
 
       // Verify each workflow maintained its unique data
       results.forEach(result => {

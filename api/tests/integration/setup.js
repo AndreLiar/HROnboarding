@@ -111,7 +111,7 @@ afterAll(async () => {
   } catch (error) {
     console.warn('Database connection cleanup warning:', error.message);
   }
-  
+
   // Force close any remaining handles
   await new Promise(resolve => setTimeout(resolve, 100));
 });
