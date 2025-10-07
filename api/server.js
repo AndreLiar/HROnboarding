@@ -13,8 +13,7 @@ const DatabaseService = require('./services/databaseService');
 // Import middleware
 const { generalLimiter, securityHeaders } = require('./middleware/auth');
 
-// Import routes
-const routes = require('./routes');
+// Routes will be imported inline below
 
 // Environment validation
 console.log('🔍 Environment validation:');
@@ -91,8 +90,29 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Mount all routes at /api
-app.use('/api', routes);
+// Import individual route files
+const statusRoutes = require('./routes/status');
+const checklistRoutes = require('./routes/checklist');
+const healthRoutes = require('./routes/health');
+const authRoutes = require('./routes/auth');
+const setupRoutes = require('./routes/setup');
+const usersRoutes = require('./routes/users');
+const templateRoutes = require('./routes/templates');
+const templateApprovalRoutes = require('./routes/templateApproval');
+const templateAIRoutes = require('./routes/templateAI');
+
+// Mount status and health routes at root level
+app.use('/', statusRoutes);
+app.use('/', healthRoutes);
+
+// Mount API routes at /api prefix
+app.use('/api/auth', authRoutes);
+app.use('/api/setup', setupRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/templates', templateRoutes);
+app.use('/api/template-approval', templateApprovalRoutes);
+app.use('/api/template-ai', templateAIRoutes);
+app.use('/api/checklist', checklistRoutes);
 
 // Add startup logging for Azure diagnostics
 console.log('🚀 Starting HR Onboarding API server...');
