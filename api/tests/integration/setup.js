@@ -7,6 +7,25 @@ global.testUtils = {
   // HTTP request helper
   request: request(app),
 
+  // Rate limiting helper to prevent 429 errors
+  async rateLimitedRequest(requestFn, delay = 200) {
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return await requestFn();
+  },
+
+  // Sequential request helper
+  async sequentialRequests(requests, delay = 300) {
+    const results = [];
+    for (let i = 0; i < requests.length; i++) {
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+      const result = await requests[i]();
+      results.push(result);
+    }
+    return results;
+  },
+
   // Test database helpers
   async cleanDatabase() {
     try {
@@ -98,6 +117,9 @@ global.testUtils = {
 beforeEach(async () => {
   // Clean database before each test
   await global.testUtils.cleanDatabase();
+
+  // Add delay to prevent rate limiting between tests
+  await new Promise(resolve => setTimeout(resolve, 250));
 });
 
 afterAll(async () => {
@@ -112,6 +134,14 @@ afterAll(async () => {
     console.warn('Database connection cleanup warning:', error.message);
   }
 
-  // Force close any remaining handles
-  await new Promise(resolve => setTimeout(resolve, 100));
+  // Clear any remaining timers
+  if (global.gc) {
+    global.gc();
+  }
+
+  // Force close any remaining handles with longer timeout
+  await new Promise(resolve => {
+    const timeout = setTimeout(resolve, 500);
+    timeout.unref(); // Allow process to exit even if timeout is pending
+  });
 });
