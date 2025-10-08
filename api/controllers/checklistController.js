@@ -174,7 +174,7 @@ class ChecklistController {
       const { slug } = req.params;
 
       // Validate slug format (alphanumeric and hyphens only, no path traversal)
-      const slugPattern = /^[a-zA-Z0-9\-]+$/;
+      const slugPattern = /^[a-zA-Z0-9-]+$/;
       if (!slug || slug.includes('/') || slug.includes('\\') || slug.includes('..') || !slugPattern.test(slug)) {
         return res.status(400).json(errorResponse('Invalid slug format'));
       }
