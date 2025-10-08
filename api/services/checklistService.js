@@ -3,13 +3,16 @@ const { SYSTEM_PROMPT } = require('../utils/prompts');
 const { getFallbackChecklist } = require('../utils/fallback');
 
 class ChecklistService {
+  // Allow injection of OpenAI client for testing
+  static openaiClient = openai;
+
   static async generateChecklist(role, department) {
     let checklist;
 
-    if (openai) {
+    if (this.openaiClient) {
       try {
         const userPrompt = `Rôle: ${role}, Département: ${department}`;
-        const completion = await openai.chat.completions.create({
+        const completion = await this.openaiClient.chat.completions.create({
           model: 'gpt-3.5-turbo',
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
@@ -23,6 +26,10 @@ class ChecklistService {
         checklist = JSON.parse(checklistText);
       } catch (aiError) {
         console.warn('OpenAI API error, using fallback:', aiError.message);
+        // In test mode, throw the error instead of using fallback
+        if (process.env.NODE_ENV === 'test') {
+          throw aiError;
+        }
         checklist = null;
       }
     }

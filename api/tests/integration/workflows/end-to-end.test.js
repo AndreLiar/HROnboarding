@@ -1,30 +1,61 @@
 const request = require('supertest');
 
-// Mock OpenAI before importing the app
-jest.mock('openai', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: jest.fn(),
-      },
-    },
-  })),
-}));
-
 const app = require('../../../server');
+const ChecklistService = require('../../../services/checklistService');
+const DatabaseService = require('../../../services/databaseService');
 
 describe('End-to-End Workflow Tests', () => {
+  let originalOpenAIClient;
+
+  beforeAll(() => {
+    // Save original client and create mock
+    originalOpenAIClient = ChecklistService.openaiClient;
+    ChecklistService.openaiClient = {
+      chat: {
+        completions: {
+          create: jest.fn(),
+        },
+      },
+    };
+
+    // Create in-memory storage for saved checklists
+    const savedChecklists = new Map();
+
+    // Mock DatabaseService methods
+    jest.spyOn(DatabaseService, 'saveChecklist').mockImplementation(async (id, slug, checklist, role, department) => {
+      savedChecklists.set(slug, {
+        id,
+        slug,
+        checklist,
+        role,
+        department,
+        createdAt: new Date()
+      });
+      return slug; // Return the slug as expected
+    });
+
+    jest.spyOn(DatabaseService, 'getChecklistBySlug').mockImplementation(async (slug) => {
+      return savedChecklists.get(slug) || null;
+    });
+  });
+
+  afterAll(() => {
+    // Restore original client
+    ChecklistService.openaiClient = originalOpenAIClient;
+    // Restore database service mocks
+    jest.restoreAllMocks();
+  });
+
   // Add delay between tests to prevent rate limiting
   beforeEach(async () => {
     await new Promise(resolve => setTimeout(resolve, 200));
+    // Reset mock between tests
+    ChecklistService.openaiClient.chat.completions.create.mockClear();
   });
 
   describe('Complete Checklist Lifecycle', () => {
     it('should complete the full workflow: generate → modify → share → retrieve', async () => {
       // Mock OpenAI response
-      const { default: OpenAI } = require('openai');
-      const mockOpenAI = new OpenAI();
 
       const originalChecklist = [
         { étape: "Accueil et présentation de l'équipe" },
@@ -34,7 +65,7 @@ describe('End-to-End Workflow Tests', () => {
         { étape: 'Premier code review' },
       ];
 
-      mockOpenAI.chat.completions.create.mockResolvedValue({
+      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue({
         choices: [
           {
             message: {
@@ -131,10 +162,7 @@ describe('End-to-End Workflow Tests', () => {
 
     it('should handle multiple concurrent workflows without interference', async () => {
       // Mock OpenAI for concurrent requests
-      const { default: OpenAI } = require('openai');
-      const mockOpenAI = new OpenAI();
-
-      mockOpenAI.chat.completions.create.mockImplementation(() =>
+      ChecklistService.openaiClient.chat.completions.create.mockImplementation(() =>
         Promise.resolve({
           choices: [
             {
@@ -214,11 +242,8 @@ describe('End-to-End Workflow Tests', () => {
 
   describe('Error Recovery Workflows', () => {
     it('should handle workflow with API failures and recovery', async () => {
-      const { default: OpenAI } = require('openai');
-      const mockOpenAI = new OpenAI();
-
       // First attempt: API failure
-      mockOpenAI.chat.completions.create
+      ChecklistService.openaiClient.chat.completions.create
         .mockRejectedValueOnce(new Error('OpenAI API temporarily unavailable'))
         .mockResolvedValueOnce({
           choices: [
@@ -310,11 +335,8 @@ describe('End-to-End Workflow Tests', () => {
 
   describe('Performance and Load Testing', () => {
     it('should handle high-volume workflow operations', async () => {
-      const { default: OpenAI } = require('openai');
-      const mockOpenAI = new OpenAI();
-
       // Mock consistent responses for load testing
-      mockOpenAI.chat.completions.create.mockImplementation(() =>
+      ChecklistService.openaiClient.chat.completions.create.mockImplementation(() =>
         Promise.resolve({
           choices: [
             {
@@ -382,10 +404,7 @@ describe('End-to-End Workflow Tests', () => {
     });
 
     it('should maintain data consistency under load', async () => {
-      const { default: OpenAI } = require('openai');
-      const mockOpenAI = new OpenAI();
-
-      mockOpenAI.chat.completions.create.mockImplementation(() =>
+      ChecklistService.openaiClient.chat.completions.create.mockImplementation(() =>
         Promise.resolve({
           choices: [
             {

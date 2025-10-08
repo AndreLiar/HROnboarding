@@ -9,18 +9,23 @@ const generateSlug = () => {
 const validateRequired = (fields, body) => {
   const missing = fields.filter(field => !body[field]);
   if (missing.length > 0) {
-    throw new Error(`Missing required fields: ${missing.join(', ')}`);
+    // Generate user-friendly error messages
+    const fieldMessages = missing.map(field => {
+      const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
+      return `${fieldName} is required`;
+    });
+    throw new Error(fieldMessages.join(', '));
   }
 };
 
 // Format error response
 const errorResponse = message => {
-  return { error: message };
+  return { success: false, error: message };
 };
 
 // Format success response
 const successResponse = data => {
-  return data;
+  return { success: true, data };
 };
 
 module.exports = {

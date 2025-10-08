@@ -1,4 +1,4 @@
-const { successResponse } = require('../utils/helpers');
+// Status controller for API health checks
 
 const PORT = process.env.PORT || 3001;
 
@@ -33,12 +33,14 @@ class StatusController {
    *                   example: "development"
    */
   static getStatus(req, res) {
-    const response = successResponse({
-      message: 'HR Onboarding API is running',
+    const response = {
+      status: 'OK',
       timestamp: new Date().toISOString(),
+      message: 'HR Onboarding API is running',
+      version: '1.0.0',
       port: PORT,
       env: process.env.NODE_ENV || 'development',
-    });
+    };
 
     res.json(response);
   }

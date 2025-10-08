@@ -102,6 +102,15 @@ global.testUtils = {
     expect(Array.isArray(response.body.data.checklist)).toBe(true);
   },
 
+  validateGenerateResponse(response) {
+    expect(response.body).toHaveProperty('success', true);
+    expect(response.body).toHaveProperty('data');
+    expect(response.body.data).toHaveProperty('checklist');
+    expect(response.body.data).toHaveProperty('role');
+    expect(response.body.data).toHaveProperty('department');
+    expect(Array.isArray(response.body.data.checklist)).toBe(true);
+  },
+
   validateErrorResponse(response, expectedStatus, expectedMessage = null) {
     expect(response.status).toBe(expectedStatus);
     expect(response.body).toHaveProperty('success', false);
