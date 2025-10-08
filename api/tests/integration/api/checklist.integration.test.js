@@ -12,19 +12,21 @@ describe('Checklist API Integration Tests', () => {
     savedChecklists = new Map();
 
     // Mock DatabaseService methods
-    jest.spyOn(DatabaseService, 'saveChecklist').mockImplementation(async (id, slug, checklist, role, department) => {
-      savedChecklists.set(slug, {
-        id,
-        slug,
-        checklist,
-        role,
-        department,
-        createdAt: new Date()
+    jest
+      .spyOn(DatabaseService, 'saveChecklist')
+      .mockImplementation(async (id, slug, checklist, role, department) => {
+        savedChecklists.set(slug, {
+          id,
+          slug,
+          checklist,
+          role,
+          department,
+          createdAt: new Date(),
+        });
+        return slug;
       });
-      return slug;
-    });
 
-    jest.spyOn(DatabaseService, 'getChecklistBySlug').mockImplementation(async (slug) => {
+    jest.spyOn(DatabaseService, 'getChecklistBySlug').mockImplementation(async slug => {
       return savedChecklists.get(slug) || null;
     });
   });
@@ -63,7 +65,9 @@ describe('Checklist API Integration Tests', () => {
 
     it('should generate a checklist successfully', async () => {
       // Mock OpenAI response
-      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
+      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(
+        global.testUtils.mockOpenAIResponse()
+      );
 
       const testData = {
         role: 'Développeur Frontend',
@@ -191,7 +195,9 @@ describe('Checklist API Integration Tests', () => {
 
     beforeEach(async () => {
       // Generate a checklist first for sharing tests
-      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
+      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(
+        global.testUtils.mockOpenAIResponse()
+      );
 
       const response = await request(app).post('/api/checklist/generate').send({
         role: 'Test Developer',
@@ -279,7 +285,9 @@ describe('Checklist API Integration Tests', () => {
 
     beforeEach(async () => {
       // Create and share a checklist for retrieval tests
-      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
+      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(
+        global.testUtils.mockOpenAIResponse()
+      );
 
       // Generate checklist
       const generateResponse = await request(app).post('/api/checklist/generate').send({
@@ -402,7 +410,9 @@ describe('Checklist API Integration Tests', () => {
     });
 
     it('should handle concurrent checklist operations', async () => {
-      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(global.testUtils.mockOpenAIResponse());
+      ChecklistService.openaiClient.chat.completions.create.mockResolvedValue(
+        global.testUtils.mockOpenAIResponse()
+      );
 
       // Create sequential requests to avoid rate limiting
       const responses = [];

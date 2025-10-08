@@ -22,19 +22,21 @@ describe('End-to-End Workflow Tests', () => {
     const savedChecklists = new Map();
 
     // Mock DatabaseService methods
-    jest.spyOn(DatabaseService, 'saveChecklist').mockImplementation(async (id, slug, checklist, role, department) => {
-      savedChecklists.set(slug, {
-        id,
-        slug,
-        checklist,
-        role,
-        department,
-        createdAt: new Date()
+    jest
+      .spyOn(DatabaseService, 'saveChecklist')
+      .mockImplementation(async (id, slug, checklist, role, department) => {
+        savedChecklists.set(slug, {
+          id,
+          slug,
+          checklist,
+          role,
+          department,
+          createdAt: new Date(),
+        });
+        return slug; // Return the slug as expected
       });
-      return slug; // Return the slug as expected
-    });
 
-    jest.spyOn(DatabaseService, 'getChecklistBySlug').mockImplementation(async (slug) => {
+    jest.spyOn(DatabaseService, 'getChecklistBySlug').mockImplementation(async slug => {
       return savedChecklists.get(slug) || null;
     });
   });

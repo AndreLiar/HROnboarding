@@ -64,16 +64,11 @@ class ChecklistController {
       res.json(successResponse(result));
     } catch (error) {
       console.error('Error generating checklist:', error);
-      const isValidationError = error.message.includes('Missing required') || error.message.includes(' is required');
+      const isValidationError =
+        error.message.includes('Missing required') || error.message.includes(' is required');
       res
         .status(isValidationError ? 400 : 500)
-        .json(
-          errorResponse(
-            isValidationError
-              ? error.message
-              : 'Failed to generate checklist'
-          )
-        );
+        .json(errorResponse(isValidationError ? error.message : 'Failed to generate checklist'));
     }
   }
 
@@ -123,10 +118,12 @@ class ChecklistController {
 
       await DatabaseService.saveChecklist(slug, slug, checklist, role, department);
 
-      res.json(successResponse({ 
-        slug,
-        shareUrl: `/c/${slug}` 
-      }));
+      res.json(
+        successResponse({
+          slug,
+          shareUrl: `/c/${slug}`,
+        })
+      );
     } catch (error) {
       console.error('Error saving checklist:', error);
       res.status(500).json(errorResponse('Failed to save checklist'));
@@ -175,7 +172,13 @@ class ChecklistController {
 
       // Validate slug format (alphanumeric and hyphens only, no path traversal)
       const slugPattern = /^[a-zA-Z0-9-]+$/;
-      if (!slug || slug.includes('/') || slug.includes('\\') || slug.includes('..') || !slugPattern.test(slug)) {
+      if (
+        !slug ||
+        slug.includes('/') ||
+        slug.includes('\\') ||
+        slug.includes('..') ||
+        !slugPattern.test(slug)
+      ) {
         return res.status(400).json(errorResponse('Invalid slug format'));
       }
 
